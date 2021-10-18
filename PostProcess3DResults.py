@@ -4,110 +4,173 @@ import os
 import argparse
 from glob import glob
 import numpy as np
+from vtk.util.numpy_support import vtk_to_numpy
+from vtk.util.numpy_support import numpy_to_vtk
+
 class PostProcess3DResults():
 	def __init__(self,Args):
 		self.Args=Args
 		self.PressureScale=0.000750061683
+
+		#Define Input Variables if not available
+		#Input folder
+		if self.Args.InputMeshFolder is None:
+			self.Args.InputMeshFolder="./mesh-complete/"
+		#Input and Output timesteps
+		if self.Args.ResultsFolder is None:
+			self.Args.ResultsFolder=glob("*-procs_case")[0]
+		#Define Start and End Time step and Increment
+		if self.Args.StartTimestep is None:
+			self.Args.StartTimestep=int(sorted(glob(self.Args.ResultsFolder+"/all_results*.vtp"))[0].split("/")[-1][-9:-4])
+		if self.Args.StopTimestep is None:
+			self.Args.StopTimestep=int(sorted(glob(self.Args.ResultsFolder+"/all_results*.vtp"))[-1].split("/")[-1][-9:-4])
+		if self.Args.Increment is None:
+			self.Args.Increment=int(sorted(glob(self.Args.ResultsFolder+"/all_results*.vtp"))[1].split("/")[-1][-9:-4])-self.Args.StartTimestep
+		
+		#If outfolder is not defined
+		if self.Args.OutFolder is None:
+			self.Args.OutFolder="./PostProcessedData"
+
+		#Define Heart Beat
+		if self.Args.HeartBeat is None:
+			self.Args.HeartBeat=60
+		
+		#Define tag for manually cut planes
+		if self.Args.NonCapPlanes is True and self.Args.NonCapPlanesFolder is None:
+			self.Args.NonCapPlaneFolder="./ClippedPlanes"
+
 	def Main(self):
-		#Get the Flow Rates at all of the outlets
-		CapNames=self.ReadCapNames() #Read the CapNames
-		CapData =[self.ReadVtpFile(CapName_) for CapName_ in CapNames]
-		CapAreas=[self.ComputeSurfaceArea(CapData_) for CapData_ in CapData] #Compute the Areas of each cap
-
-		#Create a Dictionary to Store the Velocity Data
-		Data_VelPres={}	
-		for CapName_ in CapNames: Data_VelPres[CapName_]=[]
+		#Compute the Average Quantities over the Surface
+		self.ComputeTemporalStatistics("Volume")
 		
+		#Compute the Centerlines
+		self.ComputeCenterlines()
 
-		#Get All the results file
-		for i in range(self.Args.StartTimestep,self.Args.StopTimestep,self.Args.Increment):
+	def ComputeTemporalStatistics(self,Tag):
+		#Read the VTP and Vtu FileNames
+		SurfacePointArray={}	
 	
-			#Read the filenames at the current timestep
-			#ResultVolumetricFileName_=glob("{0}.vtu_{1}.vtu".format(self.Args.ResultsFolder,i))[0]	
-			ResultVolumetricFileName_=glob("%s/*%.05d.vtu"%(self.Args.ResultsFolder,i))[0]
-			#ResultSurfaceFileName_   =glob("{0}.vtp_{1}.vtp".format(self.Args.ResultsFolder,i))[0]
-			ResultSurfaceFileName_   =glob("%s/*%.05d.vtp"%(self.Args.ResultsFolder,i))[0]
-			if len(ResultVolumetricFileName_)==0 or len(ResultSurfaceFileName_)==0: 
+                #Get the Cap Names to compute outlet quantities
+		if Tag=="Surface": CapNames=self.ReadCapNames() #Read the CapNames
+		else: 
+			CapNames=glob(self.Args.NonCapPlanes+"/*.vtp")
+			for CapName_ in CapNames:
+				os.system("vmtksurfacetomesh -ifile %s -ofile %s"%(CapName_,CapName_.replace(".vtp",".vtu")))
+
+		
+		CapAreas={}
+		for CapName_ in CapNames:
+			CapAreas[CapName_]=self.ComputeSurfaceArea(self.ReadVtpFile(CapName_)) 
+
+                #Create a Dictionary to Store the Velocity Data
+		CapVelAverage={}
+		CapVelMax={}
+		CapPres={}
+		for CapName_ in CapNames: 
+			CapVelAverage[CapName_]=[]
+			CapVelMax[CapName_]=[]
+			CapPres[CapName_]=[]
+	
+		#Loop over all the Files
+		print ("--- Processing Surface Data")
+		counter=0
+		for i in range(self.Args.StartTimestep,self.Args.StopTimestep+self.Args.Increment,self.Args.Increment):
+			if Tag=="Surface": SurfaceFileName_   =glob("%s/*%.05d.vtp"%(self.Args.ResultsFolder,i))[0]
+			else: SurfaceFileName_   =glob("%s/*%.05d.vtu"%(self.Args.ResultsFolder,i))[0]
+			if len(SurfaceFileName_)==0:
 				print ("Could Not Find the File at TimeStep: %.05d"%i)
-		
-			#Now Load the Volumetric File
-			print ("------ Loading %s"%ResultVolumetricFileName_)
-			VolumetricData_=self.ReadVtuFile(ResultVolumetricFileName_)	
+			print ("--- ---Looping over: %s"%SurfaceFileName_)
 			
 			
-			#Loop over all of the caps to compute the average velocity
-			for k in range(0,len(CapNames)):
-
-				#Get the Surface Node IDs for the Given Cap
-				Npts_=CapData[k].GetNumberOfPoints()
-
-				#Loop over all of the nodes of the cap ids
-				VelocityX_ =np.zeros(Npts_)
-				VelocityY_ =np.zeros(Npts_)
-				VelocityZ_ =np.zeros(Npts_)
-				Pressure_ =np.zeros(Npts_)
-
-				for j in range(Npts_):
-					NodeId_=CapData[k].GetPointData().GetArray("GlobalNodeID").GetValue(j)
-
-					VelocityX_[j]=VolumetricData_.GetPointData().GetArray("velocity").GetValue(NodeId_*3)
-					VelocityY_[j]=VolumetricData_.GetPointData().GetArray("velocity").GetValue(NodeId_*3+1)
-					VelocityZ_[j]=VolumetricData_.GetPointData().GetArray("velocity").GetValue(NodeId_*3+2)
-
-					Pressure_[j] =VolumetricData_.GetPointData().GetArray("pressure").GetValue(NodeId_)
-
-
-				#Get Velocity Magnitude
-				VelocityMag_=np.power(np.power(VelocityX_,2)+np.power(VelocityY_,2)+np.power(VelocityZ_,2),0.5)
-				#Get the Average
-				VelocityX_avg_=np.average(VelocityX_)
-				VelocityY_avg_=np.average(VelocityY_)
-				VelocityZ_avg_=np.average(VelocityZ_)
-				VelocityMag_avg_=np.average(VelocityMag_)
-				Pressure_avg_ =np.average(Pressure_)
-				
-				#Get the Max Velocity
-				VelocityX_max_=np.max(VelocityX_)
-				VelocityY_max_=np.max(VelocityY_)
-				VelocityZ_max_=np.max(VelocityZ_)
-				VelocityMag_max_=np.max(VelocityMag_)
+			if Tag=="Surface":SurfaceData_=self.ReadVtpFile(SurfaceFileName_)
+			else: SurfaceData_=self.ReadVtuFile(SurfaceFileName_)
 			
-				#Store this inside the global Velocity and Pressure Array
-				Data_VelPres[CapNames[k]].append([VelocityX_avg_,VelocityY_avg_,VelocityZ_avg_,VelocityMag_avg_,VelocityX_max_,VelocityY_max_,VelocityZ_max_,VelocityMag_max_,Pressure_avg_,VelocityMag_avg_*CapAreas[k]])
+
+			#################### Compute the Values at Outlets #########################
+			if i==self.Args.StartTimestep: os.system("mkdir %s/MeshCaps/"%self.Args.OutFolder)
+			for CapName_ in CapNames:
+				CapOutFileName_="%s/MeshCaps/%s_%05d.vtp"%(self.Args.OutFolder,CapName_.split("/")[-1].replace(".vtp",""),i)
+				if Tag=="Surface": 
+					os.system("vmtksurfaceprojection -rfile %s -ifile %s -ofile %s"%(SurfaceFileName_,CapName_,CapOutFileName_))	
+					CapSurface_=self.ReadVtpFile(CapOutFileName_)
+				else:
+					os.system("vmtkmeshprojection -rfile %s -ifile %s -ofile %s"%(SurfaceFIleName_,CapName_.replace(".vtp",".vtu"),CapOutFileName_))
+					CapSurface_=self.ReadVtuFile(CapOutFileName_.replace(".vtp",".vtu"))
+				#Read Cap Data and Store Values in Array
+				N_arrays=CapSurface_.GetPointData().GetNumberOfArrays()
+				VelMag_=np.linalg.norm(CapSurface_.GetPointData().GetArray("velocity"),axis=1)
+				CapVelMax[CapName_].append(np.max(VelMag_))
+				CapVelAverage[CapName_].append(np.average(VelMag_))
+				CapPres[CapName_].append(np.average(CapSurface_.GetPointData().GetArray("pressure")))
+					
+
+			################### Computing the Average File ###########################
+			N_arrays=SurfaceData_.GetPointData().GetNumberOfArrays()
+			for j in range(0,N_arrays):
+				#Initialize the Arrays at the 0th timestep
+				ArrayName_=SurfaceData_.GetPointData().GetArrayName(j)
+				if i==self.Args.StartTimestep:
+					SurfacePointArray[ArrayName_]=vtk_to_numpy(SurfaceData_.GetPointData().GetArray(ArrayName_))
+					if ArrayName_.find("Velocity")>=0 or ArrayName_.find("velocity")>=0 or ArrayName_.find("WSS")>=0 or ArrayName_.find("wss")>=0:
+						SurfacePointArray["%s_mag"%ArrayName_]=np.linalg.norm(SurfaceData_.GetPointData().GetArray(ArrayName_),axis=1)
+				else:
+					SurfacePointArray[ArrayName_]+=vtk_to_numpy(SurfaceData_.GetPointData().GetArray(ArrayName_))
+					if ArrayName_.find("Velocity")>=0 or ArrayName_.find("velocity")>=0 or ArrayName_.find("WSS")>=0 or ArrayName_.find("wss")>=0:
+						SurfacePointArray["%s_mag"%ArrayName_]+=np.linalg.norm(SurfaceData_.GetPointData().GetArray(ArrayName_),axis=1)
 
 
-		#Write the Output Tecplot File
-		self.WriteTecplotOutlets(Data_VelPres)
+			counter+=1	
 
+
+		###################### Store the Average File #########################
+		SurfaceData_=self.UpdatePolyData(SurfaceData_,SurfacePointArray,factor=1./counter)	
+		if Tag=="Surface":
+			self.WriteVtpFile(self.Args.OutFolder+"/SurfaceData_TimeAveragedResults.vtp",SurfaceData_)
+		else:
+			self.WriteVtuFile(self.Args.OutFolder+"/VolumeData_TimeAveragedResults.vtu",SurfaceData_)
 	
-	def WriteTecplotOutlets(self,Data):
-		outfile=open(self.Args.OutFolder+"/OutletData.dat",'w')
+
+		###################### Write the Tecplot File #########################
+		self.WriteTecplotCaps(CapVelAverage,CapVelMax,CapPres,CapAreas)	
+
+	def UpdatePolyData(self,SurfaceData,SurfacePointArrays,factor=1):
+		#Remove all of the point arrays
+		N_arrays=SurfaceData.GetPointData().GetNumberOfArrays()
+		for i in range(N_arrays):
+			SurfaceData.GetPointData().RemoveArray(SurfaceData.GetPointData().GetArrayName(i))
+		#Append New Array
+		for key in SurfacePointArrays:
+			NewArray_=numpy_to_vtk(SurfacePointArrays[key]*factor)
+			NewArray_.SetName(key)
+			SurfaceData.GetPointData().AddArray(NewArray_)
+		return SurfaceData
+				
+	
+	def WriteTecplotCaps(self,DataVelAverage,DataVelMax,DataPres,CapAreas):
+		outfile=open(self.Args.OutFolder+"/CapData.dat",'w')
 		#In the file header, add all of the time-averaged quantities
-		outfile.write("#Time Averaged Quantities\n")
-		outfile.write("VelocityMag, VelocityPeak, FlowRate, Pressure\n")
-		for key in Data:
-			print (key,Data[key])
-			#print (np.array(Data[key])[:])
-			exit(1)
+		outfile.write("#Temporal Averages\n")
+		outfile.write("#CapName, Velocity, VelocityMaximum, CapArea, FlowRate, Pressure\n")
+		for key in DataVelAverage:
+			CapName_=key.split("/")[-1].replace(".vtp","")
+			outfile.write("%s %.05f %.05f %.05f %.05f %.05f\n"%(CapName_,np.average(DataVelAverage[key]),np.average(DataVelMax[key]),CapAreas[key],np.average(DataVelAverage[key])*CapAreas[key],np.average(DataPres[key])*self.PressureScale))	
 			
-			outfile.write("#%.05f %.05f %.05f %.0f5\n"%(np.average(Data[key][:][3]),np.average(Data[key][:][7]),Data[key][:][9],Data[key][:][8]*self.PressureScale))
-		
 		outfile.write('TITLE="Outlet FLow Rates and Velocities"\n')
-		outfile.write('VARIABLES="Time", "VelocityMag","VelocityMagPeak","FlowRate","Pressure"\n')
+		outfile.write('VARIABLES="Time", "Velocity","VelocityMaximum","FlowRate","Pressure"\n')
 
 		#Define the period
 		Period=60/self.Args.HeartBeat
 
-
 		#Loop over all of the cap names
 		counter=0
-		for key in Data:
+		for key in DataVelAverage.keys:
 			#Define the Time array
-			if counter==0: Time=np.linspace(0,Period,Data[key])
+			if counter==0: Time=np.linspace(0,Period,len(DataVelAverage[key]))
 
-			outfile.write('Zone T="%s", I=%d, F=POINT\n'%(key,len(Data[key])))
-			for i in range(Data[key]):
-				outfile.write("%.06f %.06f %.06f %.06f %.06f\n"%(Time[i],Data[key][i][3],Data[key][i][7],Data[key][i][9],Data[key][i][8]*self.PressureScale))	
+			outfile.write('Zone T="%s", I=%d, F=POINT\n'%(key,len(DataVelAverage[key])))
+			for i in range(len(DataVelAverage[key])):
+				outfile.write("%.06f %.06f %.06f %.06f %.06f\n"%(Time[i],DataVelAverage[key][i],DataVelMax[key][i],DataVelAverage[key][i]*CapAreas[key],DataPres[key][i]*self.PressureScale))
+			
 
 			counter+=1
 		outfile.close()
@@ -117,15 +180,16 @@ class PostProcess3DResults():
 		Caps_LCA  =sorted(glob(self.Args.InputMeshFolder+"/mesh-surfaces/lca_*.vtp"))	
 		Caps_RCA  =sorted(glob(self.Args.InputMeshFolder+"/mesh-surfaces/rca_*.vtp"))	
 		Caps_Aorta=sorted(glob(self.Args.InputMeshFolder+"/mesh-surfaces/aorta_*.vtp"))
+		Caps_inflow=sorted(glob(self.Args.InputMeshFolder+"/mesh-surfaces/inflow.vtp"))
 		
 		#Put all of these names in a singe array
-		CapNames=[]+Caps_Aorta+Caps_LCA+Caps_RCA
+		CapNames=Cap_inflow+Caps_Aorta+Caps_LCA+Caps_RCA
 
 		return CapNames	
 
-	def ReadVtpFile(self,FileName):
+	def ReadVtpFile(self,Filename):
 		reader=vtk.vtkXMLPolyDataReader()
-		reader.SetFileName(FileName)
+		reader.SetFileName(Filename)
 		reader.Update()
 		return reader.GetOutput()
 
@@ -134,39 +198,65 @@ class PostProcess3DResults():
 		reader.SetFileName(Filename)
 		reader.Update()
 		return reader.GetOutput()
+
+	def WriteVtpFile(self,Filename,Data):
+		writer=vtk.vtkXMLPolyDataWriter()
+		writer.SetFileName(Filename)
+		writer.SetInputData(Data)
+		writer.Update()	
+
+	def WriteVtuFile(self,Filename,Data):
+		writer=vtk.vtkXMLUnstructuredGridWriter()
+		writer.SetFileName(Filename)
+		writer.SetInputData(Data)
+		writer.Update()
 		
 	def ComputeSurfaceArea(self,PolyData):
 		MassProperties=vtk.vtkMassProperties()
 		MassProperties.SetInputData(PolyData)
 		MassProperties.Update()
 		return MassProperties.GetSurfaceArea()			
+	
 
-
-
+	def ComputeCentroid(self,PolyData):
+		num_points = PolyData.GetNumberOfPoints()
+		x_list = []
+		y_list = []
+		z_list = []
+		for i in range(num_points):
+			x_list.append(float(PolyData.GetPoints().GetPoint(i)[0]))
+			y_list.append(float(PolyData.GetPoints().GetPoint(i)[1]))
+			z_list.append(float(PolyData.GetPoints().GetPoint(i)[2]))
+		return [np.average(x_list), np.average(y_list), np.average(z_list)]
+	
 
 if __name__=="__main__":
 	#Arguments
 	parser= argparse.ArgumentParser(description="This script will process the results from Simvascular")
 
 	#Input filename for the mesh-complete folder
-	parser.add_argument('-meshfolder', '--InputMeshFolder', type=str, required=True, dest="InputMeshFolder", help="The path to the mesh-complete folder that contains the volumetric and surface meshes") 
+	parser.add_argument('-meshfolder', '--InputMeshFolder', type=str, required=False, dest="InputMeshFolder", help="The path to the mesh-complete folder that contains the volumetric and surface meshes") 
 
 	#Input Folder where all of the results have been stored
-	parser.add_argument('-resultsfolder', '--ResultsFolder', type=str, required=True, dest="ResultsFolder", help="The path to the folder that contains all all_data.vtp and all_data.vtu files postprocessed from SimVascular")
+	parser.add_argument('-resultsfolder', '--ResultsFolder', type=str, required=False, dest="ResultsFolder", help="The path to the folder that contains all all_data.vtp and all_data.vtu files postprocessed from SimVascular")
 	
 	#Define the output folder
-	parser.add_argument('-outfolder', '--OutFolder', type=str, required=True, dest="OutFolder", help="The path to the folder to store the post-processed files")
+	parser.add_argument('-outfolder', '--OutFolder', type=str, required=False, dest="OutFolder", help="The path to the folder to store the post-processed files")
 
 	#Start and End Argumenets		 
-	parser.add_argument('-start', '--StartTimestep', type=int, required=True, dest="StartTimestep", help="The starting timestep to process the SimVascular files")
+	parser.add_argument('-start', '--StartTimestep', type=int, required=False, dest="StartTimestep", help="The starting timestep to process the SimVascular files")
 	
 	#End Argument
-	parser.add_argument('-stop', '--StopTimestep', type=int, required=True, dest="StopTimestep", help="The End timestep to process the SimVascular files")
+	parser.add_argument('-stop', '--StopTimestep', type=int, required=False, dest="StopTimestep", help="The End timestep to process the SimVascular files")
 
 	#Increment
-	parser.add_argument('-incr', '--Increment', type=int, required=True, dest="Increment", help="The increment for the timestep files to process")
+	parser.add_argument('-incr', '--Increment', type=int, required=False, dest="Increment", help="The increment for the timestep files to process")
 
-	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=True, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
+	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=False, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
+	
+	#Define the argument for non-cap planes 
+	parser.add_argument('-NonCapPlanes', '--NonCapPlanes', type=bool, required=False, dest="NonCapPlanes", default=True, help="Tag to incidate whether there are cut-planes to processed that are not outlets")
+	parser.add_argument('-NonCapPlanesFolder', '--NonCapPlanesFolder', type=str, required=False, dest="NonCapPlanesFolder", default=True, help="Folder that contains the slices for the planes that are not outlets but inside the domain. If not provided, default is to lool for 'ClippedPlanes' folder. ")
 
 	#Put all the arguments together
 	args=parser.parse_args()	
