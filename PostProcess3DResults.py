@@ -36,15 +36,19 @@ class PostProcess3DResults():
 			self.Args.HeartBeat=60
 		
 		#Define tag for manually cut planes
-		if self.Args.NonCapPlanes is True and self.Args.NonCapPlanesFolder is None:
-			self.Args.NonCapPlaneFolder="./ClippedPlanes"
+		if (self.Args.NonCapPlanes is True) and (self.Args.NonCapPlanesFolder is None):
+			self.Args.NonCapPlanesFolder="./ClippedPlanes"
 
 	def Main(self):
 		#Compute the Average Quantities over the Surface
 		self.ComputeTemporalStatistics("Volume")
-		
-		#Compute the Centerlines
-		self.ComputeCenterlines()
+	
+
+vmtkmeshmergetimesteps -directory ./ -firststep 4000 -laststep 7000 -intervalstep 10 -pattern all_results.vtu_%5s.vtu -ofile mesh_timesteps.vtu -velocityvector 1 -vector velocity
+
+
+vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofile traces.vtp -maximumnumberofsteps 1000vmtkrenderer -background 1 1 1 --pipe vmtksurfaceviewer -ifile all_results.vtp_04000.vtp  -opacity 0.03 --pipe vmtksurfaceviewer -ifile wall_svg_to_lcx_pre.tec -opacity 0.1 --pipe vmtksurfaceviewer -ifile wall_svg_to_ramus.tec -opacity 0.12 --pipe vmtkpathlineanimator -ifile traces.vtp -timestep 0.02 -legend 0 -maxtime 6 -pointsize 12 -colormap blackbody -screenshot 1 -imagesdirectory ./animations/
+	
 
 	def ComputeTemporalStatistics(self,Tag):
 		#Read the VTP and Vtu FileNames
@@ -52,8 +56,8 @@ class PostProcess3DResults():
 	
                 #Get the Cap Names to compute outlet quantities
 		if Tag=="Surface": CapNames=self.ReadCapNames() #Read the CapNames
-		else: 
-			CapNames=glob(self.Args.NonCapPlanes+"/*.vtp")
+		else:
+			CapNames=glob(self.Args.NonCapPlanesFolder+"/*.vtp")
 			for CapName_ in CapNames:
 				os.system("vmtksurfacetomesh -ifile %s -ofile %s"%(CapName_,CapName_.replace(".vtp",".vtu")))
 
@@ -87,14 +91,14 @@ class PostProcess3DResults():
 			
 
 			#################### Compute the Values at Outlets #########################
-			if i==self.Args.StartTimestep: os.system("mkdir %s/MeshCaps/"%self.Args.OutFolder)
+			if i==self.Args.StartTimestep: os.system("mkdir %s/CapSurface/"%self.Args.OutFolder)
 			for CapName_ in CapNames:
-				CapOutFileName_="%s/MeshCaps/%s_%05d.vtp"%(self.Args.OutFolder,CapName_.split("/")[-1].replace(".vtp",""),i)
+				CapOutFileName_="%s/CapSurfaceData/%s_%05d.vtp"%(self.Args.OutFolder,CapName_.split("/")[-1].replace(".vtp",""),i)
 				if Tag=="Surface": 
 					os.system("vmtksurfaceprojection -rfile %s -ifile %s -ofile %s"%(SurfaceFileName_,CapName_,CapOutFileName_))	
 					CapSurface_=self.ReadVtpFile(CapOutFileName_)
 				else:
-					os.system("vmtkmeshprojection -rfile %s -ifile %s -ofile %s"%(SurfaceFIleName_,CapName_.replace(".vtp",".vtu"),CapOutFileName_))
+					os.system("vmtkmeshprojection -rfile %s -ifile %s -ofile %s"%(SurfaceFileName_,CapName_.replace(".vtp",".vtu"),CapOutFileName_.replace(".vtp",".vtu")))
 					CapSurface_=self.ReadVtuFile(CapOutFileName_.replace(".vtp",".vtu"))
 				#Read Cap Data and Store Values in Array
 				N_arrays=CapSurface_.GetPointData().GetNumberOfArrays()
@@ -131,7 +135,7 @@ class PostProcess3DResults():
 	
 
 		###################### Write the Tecplot File #########################
-		self.WriteTecplotCaps(CapVelAverage,CapVelMax,CapPres,CapAreas)	
+		self.WriteTecplotCaps(CapVelAverage,CapVelMax,CapPres,CapAreas,Tag)
 
 	def UpdatePolyData(self,SurfaceData,SurfacePointArrays,factor=1):
 		#Remove all of the point arrays
@@ -146,8 +150,9 @@ class PostProcess3DResults():
 		return SurfaceData
 				
 	
-	def WriteTecplotCaps(self,DataVelAverage,DataVelMax,DataPres,CapAreas):
-		outfile=open(self.Args.OutFolder+"/CapData.dat",'w')
+	def WriteTecplotCaps(self,DataVelAverage,DataVelMax,DataPres,CapAreas,Tag):
+		if Tag=="Surface": outfile=open(self.Args.OutFolder+"/CapData.dat",'w')
+		else: outfile=open(self.Args.OutFolder+"/NonCapData.dat",'w')
 		#In the file header, add all of the time-averaged quantities
 		outfile.write("#Temporal Averages\n")
 		outfile.write("#CapName, Velocity, VelocityMaximum, CapArea, FlowRate, Pressure\n")
@@ -163,7 +168,7 @@ class PostProcess3DResults():
 
 		#Loop over all of the cap names
 		counter=0
-		for key in DataVelAverage.keys:
+		for key in DataVelAverage:
 			#Define the Time array
 			if counter==0: Time=np.linspace(0,Period,len(DataVelAverage[key]))
 
@@ -256,7 +261,7 @@ if __name__=="__main__":
 	
 	#Define the argument for non-cap planes 
 	parser.add_argument('-NonCapPlanes', '--NonCapPlanes', type=bool, required=False, dest="NonCapPlanes", default=True, help="Tag to incidate whether there are cut-planes to processed that are not outlets")
-	parser.add_argument('-NonCapPlanesFolder', '--NonCapPlanesFolder', type=str, required=False, dest="NonCapPlanesFolder", default=True, help="Folder that contains the slices for the planes that are not outlets but inside the domain. If not provided, default is to lool for 'ClippedPlanes' folder. ")
+	parser.add_argument('-NonCapPlanesFolder', '--NonCapPlanesFolder', type=str, required=False, dest="NonCapPlanesFolder", help="Folder that contains the slices for the planes that are not outlets but inside the domain. If not provided, default is to lool for 'ClippedPlanes' folder. ")
 
 	#Put all the arguments together
 	args=parser.parse_args()	
