@@ -54,7 +54,7 @@ class PostProcess3DResults():
 		
 
 
-	def ParticleTracer(self):
+	"""def ParticleTracer(self):
 		#Create a folder for velocity vector
 		os.system("%s/PartcileTracer"%self.ResultsFolder)
 		os.system("%s/ParticleTracer/VelocityData"%self.ResultsFolder)
@@ -73,7 +73,7 @@ class PostProcess3DResults():
 
 		os.system("vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofile traces.vtp -maximumnumberofsteps 1000")
 	
-		os.system("vmtkrenderer -background 1 1 1 --pipe vmtksurfaceviewer -ifile all_results.vtp_04000.vtp  -opacity 0.03 --pipe vmtksurfaceviewer -ifile wall_svg_to_lcx_pre.tec -opacity 0.1 --pipe vmtksurfaceviewer -ifile wall_svg_to_ramus.tec -opacity 0.12 --pipe vmtkpathlineanimator -ifile traces.vtp -timestep 0.02 -legend 0 -maxtime 6 -pointsize 12 -colormap blackbody -screenshot 1 -imagesdirectory ./animations/")
+		os.system("vmtkrenderer -background 1 1 1 --pipe vmtksurfaceviewer -ifile all_results.vtp_04000.vtp  -opacity 0.03 --pipe vmtksurfaceviewer -ifile wall_svg_to_lcx_pre.tec -opacity 0.1 --pipe vmtksurfaceviewer -ifile wall_svg_to_ramus.tec -opacity 0.12 --pipe vmtkpathlineanimator -ifile traces.vtp -timestep 0.02 -legend 0 -maxtime 6 -pointsize 12 -colormap blackbody -screenshot 1 -imagesdirectory ./animations/")"""
 
 	
 
@@ -284,7 +284,7 @@ if __name__=="__main__":
 	#Increment
 	parser.add_argument('-incr', '--Increment', type=int, required=False, dest="Increment", help="The increment for the timestep files to process")
 
-	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=False, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
+	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=True, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
 	
 	#Define the argument for non-cap planes 
 	parser.add_argument('-NonCapPlanes', '--NonCapPlanes', type=bool, required=False, dest="NonCapPlanes", default=True, help="Tag to incidate whether there are cut-planes to processed that are not outlets")

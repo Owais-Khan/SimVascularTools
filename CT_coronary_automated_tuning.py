@@ -1,3 +1,4 @@
+from time import sleep
 import vtk
 import os
 import glob
@@ -8,36 +9,52 @@ import math
 from scipy.optimize import minimize
 pConv = 1333.34
 
-# *********************** BOUNDARY CONDITION OPTIONS ************************
-splitting_scheme="owais"
-f_l=0.028
-f_r=0.012
-
-if splitting_scheme=="justin":sys_cor_split = 4.0
-if splitting_scheme=="owais": sys_cor_split = (f_l+f_r)*100
-# *************************** SOLVER PARAMETERS *************************
-N_timesteps=200
-N_cycles=3
 
 # ******************* DEFINE USER INPUTS IN THIS BLOCK ************************
 # ** Patient clinical information (if not known, indicate 'NONE')
 
-heart_rate = 60.0 #BPM
-Pao_min = 90.0 # mmHg
-Pao_max = 140.0 # mmHg
+heart_rate = 57.3 #BPM
+Pao_min    = 89.8 # mmHg
+Pao_max    = 151.3 # mmHg
+strokeVol = 99.0 # mL
+ejectFract = 0.69
+sys_cor_split=6.37 #The fraction of cardiac output to all coronary arteries
+
 meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
-strokeVol = 63.0 # mL
 Ppul_mean = 14.0 # mmHg
-ejectFract = 0.67
-Qla_ratio = 'None'#1.07 # Ratio of 'early' to 'late' flows into LV (i.e. E/A wave)
-mit_valve = 'None'#0.56 # Fraction of heart cycle that mitral valve is open for
-aor_valve = 'None'#0.39 # Fraction of heart cycle that aortic valve is open for
-pul_valve = 'None'#0.374 # Fraction of heart cycle that pulmonary valve is open for
-Pra_mean = 'None'#3.0 # mmHg - IVC right atrial mean pressure
+Qla_ratio = 'None' #1.07 # Ratio of 'early' to 'late' flows into LV (i.e. E/A wave)
+mit_valve = 'None' #0.763  #0.56 # Fraction of heart cycle that mitral valve is open for
+aor_valve = 'None' #0.311  #0.39 # Fraction of heart cycle that aortic valve is open for
+pul_valve = 'None' #0.377  #0.374 # Fraction of heart cycle that pulmonary valve is open for
+Pra_mean = 'None'  #3.0 # mmHg - IVC right atrial mean pressure
 meanFlow = strokeVol*(float(heart_rate)/60.0) # mL/s
 Cam_scale = 0.89
 Ca_scale = 0.11
+Crcr_estim = 100e-6 #compliance of the aorta (estimate from 3ewk)
+# ************************* Left and Right Coronary Split *******************
+#Write a file to store flow Split data
+Left_Cor_split_assigned=70
+Right_Cor_split_assigned=100-Left_Cor_split_assigned
 
+f_l=(sys_cor_split/100.)*(Left_Cor_split_assigned/100.)
+f_r=(sys_cor_split/100.)*(Right_Cor_split_assigned/100.)
+
+Left_Cor_split_computed=0 #Don't touch
+Aor_Cor_split_computed=0 #Don't touch
+
+#Write the data to a file
+Flow_split_file=open("LeftRightFlowSplit.dat",'w')
+Flow_split_file.write("Iteration AortaCoronaryAssigned AortaCoronaryMeasured LeftSplitAssigned LeftSplitMeasured LeftResistance RightResistance\n")
+Flow_split_file.close()
+
+# *********************** Coronary Flow Split ************************
+splitting_scheme="owais"
+if splitting_scheme=="justin":sys_cor_split = 4.0
+if splitting_scheme=="owais": sys_cor_split = (f_l+f_r)*100
+
+# *************************** SOLVER PARAMETERS *************************
+N_timesteps=200
+N_cycles=3
 
 # ** FSI parameters
 
@@ -57,7 +74,7 @@ deformable_kcons=0.833333
 deformable_pressure=119990
 
 # ** Mesh information
-
+WORKING_DIRECTORY  = os.getcwd()
 MESH_SURFACES_PATH = os.getcwd()+"/mesh-complete/mesh-surfaces"
 aorBranchTag = 'aorta'
 lcaBranchTag = 'lca'
@@ -84,7 +101,7 @@ COM_OPT_SCRIPT = "Niagara_optimize_surr_com_script"
 
 # ** Other tuning settings
 
-USER_EMAIL_ADDRESS = 'owaiskhan@ryerson.ca'
+USER_EMAIL_ADDRESS = 'aseresti@ryerson.ca'
 USE_OPTIMIZATION = True
 LOG_SCALE = 0.0001
 NUM_RESTARTS = 50
@@ -275,11 +292,42 @@ def runSurrogateComplianceOptimization():
 def getLL_params():
   standard_devs = []
   weights = []
+  standard_devs.append(5.0)    # PaoMin
+  standard_devs.append(5.0)   # PaoMax
+  standard_devs.append(5.0)    # PaoMean
+  standard_devs.append(0.05)    # AorCorSplit
+  standard_devs.append(5.0)    # AbsQin
+  standard_devs.append(0.8)    # LCorMaxRatio
+  standard_devs.append(2.5337) # LCorTotRatio
+  standard_devs.append(0.02)   # LThirdFF
+  standard_devs.append(0.03)   # LHalfFF
+  standard_devs.append(0.3)    # RCorMaxRatio
+  standard_devs.append(1.0816) # RCorTotRatio
+  standard_devs.append(0.07)   # RThirdFF
+  standard_devs.append(0.07)   # RHalfFF
 
-  standard_devs.append(8.0)    # PaoMin
+  weights.append(3.0) # PaoMin
+  weights.append(3.0) # PaoMax
+  weights.append(3.0) # PaoMean
+  weights.append(5.0) # AorCorSplit MOK: Previously 1.0
+  weights.append(5.0) # AbsQin
+  weights.append(2.5) # LCorMaxRatio
+  weights.append(2.5) # LCorTotRatio
+  weights.append(2.5) # LThirdFF
+  weights.append(2.5) # LHalfFF
+  weights.append(2.5) # RCorMaxRatio
+  weights.append(2.5) # RCorTotRatio
+  weights.append(2.5) # RThirdFF
+  weights.append(2.5) # RHalfFF
+
+
+
+
+
+  """standard_devs.append(8.0)    # PaoMin
   standard_devs.append(12.0)   # PaoMax
   standard_devs.append(9.6)    # PaoMean
-  standard_devs.append(0.2)    # AorCorSplit
+  standard_devs.append(0.05)    # AorCorSplit
   standard_devs.append(9.0)    # AbsQin
   standard_devs.append(0.8)    # LCorMaxRatio
   standard_devs.append(2.5337) # LCorTotRatio
@@ -293,7 +341,7 @@ def getLL_params():
   weights.append(0.5) # PaoMin
   weights.append(0.25) # PaoMax
   weights.append(1.0) # PaoMean
-  weights.append(1.0) # AorCorSplit
+  weights.append(1.0) # AorCorSplit MOK: Previously 1.0
   weights.append(0.25) # AbsQin
   weights.append(5.0) # LCorMaxRatio
   weights.append(5.0) # LCorTotRatio
@@ -302,7 +350,7 @@ def getLL_params():
   weights.append(5.0) # RCorMaxRatio
   weights.append(5.0) # RCorTotRatio
   weights.append(5.0) # RThirdFF
-  weights.append(5.0) # RHalfFF
+  weights.append(5.0) # RHalfFF"""
 
   return standard_devs, weights
 
@@ -384,6 +432,9 @@ def updateSurrogateResistances(new_resistances):
 #-------------------------------------------------------------------------------
 
 def post_process_3D_results(all_data_path):
+  #Define global variables
+  global Left_Cor_split_computed
+  global Aor_Cor_split_computed
 
   total_steps = -1
   single_cycle = -1
@@ -534,6 +585,10 @@ def post_process_3D_results(all_data_path):
   # COMPUTE OUTPUT QUANTITIES
   Qinlet = np.trapz( AllData[total_steps - single_cycle - 1 : total_steps, nUnknowns + nFaces + 4], x=AllData[total_steps - single_cycle - 1 : total_steps, auxStart] )
   Aor_Cor_split = ( (Q_lcor + Q_rcor) / (Q_lcor + Q_rcor + Q_rcr) ) * 100.0
+  Aor_Cor_split_computed=Aor_Cor_split
+  #Aor_Cor_split = ( (Q_lcor) / (Q_lcor + Q_rcor + Q_rcr) ) * 100.0
+  Left_Cor_split = ( (Q_lcor) / (Q_lcor + Q_rcor))*100.0
+  Left_Cor_split_computed=Left_Cor_split
   Pao_max = np.amax( AllData[total_steps - single_cycle - 1 : total_steps, 9] )
   Pao_min = np.amin( AllData[total_steps - single_cycle - 1 : total_steps, 9] )
   Pao_mean = np.mean( AllData[total_steps - single_cycle - 1 : total_steps, 9] )
@@ -559,6 +614,7 @@ def post_process_3D_results(all_data_path):
   print("** PaoMax: \t{0:.2f}".format(Pao_max))
   print("** PaoMean: \t{0:.2f}".format(Pao_mean))
   print("** Aor_Cor_Split: \t{0:.2f}".format(Aor_Cor_split))
+  print("** Left_Cor_Split: \t{0:.2f}".format(Left_Cor_split))
   print("** Qinlet: \t{0:.2f}".format(abs(Qinlet)))
   print("** EF_LV: \t\t{0:.2f}".format(EF_LV))
   print("** Qla_ratio: \t{0:.2f}".format(Qla_ratio))
@@ -756,60 +812,35 @@ def coronaryTuningIteration(count, rigidFlag):
     run3D_SIM()
 
   # NEED FLAG HERE TO DETERMINE STOP OF 3D SIMULATION
-  solver_file = open('solver.inp', 'r')
-  for line in solver_file:
-    line_split = line.split()
-    if(len(line_split) > 2):
-      if(line_split[2] == 'Timesteps:'):
-        total_steps = int(line_split[3])
-  solver_file.close()
-  procs_list = glob.glob('*-procs_*')
+  total_steps = N_timesteps*N_cycles
+  procs_list = glob.glob('%d-procs_case'%(int(FLOWSOLVER_NODES*PROCESSORS)))
   print('\n** Waiting for simulation job to launch...\n')
-  while(len(procs_list) == 0):
-    time.sleep(60)
-    procs_list = glob.glob('*-procs_*')
-  sim_folder = procs_list[0]
 
-  # Check for weird Sherlock error where memory writing fails
-  time.sleep(180)
-  error_file = glob.glob('*.e*')
-  sim_start = False
-  if(len(error_file) != 0 and os.stat(error_file[0]).st_size == 0.0):
-    sim_start = True
-  restart_counter = 0
-  while(not sim_start):
+  #Check to see if the simulation has started by finding the results folder
+  while(len(procs_list) == 0):
+    time.sleep(180)
+    procs_list = glob.glob('%d-procs_case'%(int(FLOWSOLVER_NODES*PROCESSORS)))
+    print('\n** Waiting for simulation job to launch...\n')
+  sim_folder = '%d-procs_case'%(int(FLOWSOLVER_NODES*PROCESSORS))
   
-    output_file = glob.glob('*.o*')
-    error_file = glob.glob('*.e*')
-    
-    if(len(error_file) == 0):
-      print('** Simulation still in the queue. Waiting...')
-      time.sleep(600)
-    elif(os.stat(error_file[0]).st_size != 0.0):
-      if(restart_counter > 4):
-        print('Too many retries submitting the job. Aborting.')
-        sys.exit(0)
-      print('** Sherlock error writing files. Submitting job again...\n')
-      command_string = "rm -r " + output_file[0] + " " + error_file[0] + " " + sim_folder
-      print(command_string)
-      os.system(command_string)
-      run3D_SIM()
-      time.sleep(300)
-      restart_counter = restart_counter + 1
-    else:
-      sim_start = True
-    
-    
   print('\n** Simulation has launched! Waiting for simulation to finish...\n')
 
+  #Check to see if the AllData file has been written inside the results folder
+  AllData_file=glob.glob('%d-procs_case/AllData'%(int(FLOWSOLVER_NODES*PROCESSORS)))
+  while(len(AllData_file) == 0):
+    time.sleep(180)
+    AllData_file = glob.glob('%d-procs_case/AllData'%(int(FLOWSOLVER_NODES*PROCESSORS)))
+    print('\n** AllData file has been written...\n')
+
+  #Check to see if the Simulation is finished
   sim_finished = False
-  time.sleep(1000)
   while(not sim_finished):
     time.sleep(100)
     AllData_check = open(sim_folder + '/AllData', 'r')
     counter = 0
     for line in AllData_check:
       counter = counter + 1
+    print ("------- Finished %d of %d timesteps"%(counter,total_steps))
     AllData_check.close()
     if(counter == total_steps):
       sim_finished = True
@@ -920,14 +951,14 @@ def coronaryTuningIteration(count, rigidFlag):
     ##  else:
     ##    sim_start = True
 
-  # Wait for optimization or DREAM to finish
-  print('\n** Waiting for surrogate optimization round ' + str(count) + ' to finish...\n')
-  while(not os.path.isfile(end_name)):
-    time.sleep(60);
-  print('** Surrogate optimization complete!\n')
-  command_string = "rm " + end_name
-  print(command_string)
-  os.system(command_string)
+  ### Wait for optimization or DREAM to finish
+  ##print('\n** Waiting for surrogate optimization round ' + str(count) + ' to finish...\n')
+  ##while(not os.path.isfile(end_name)):
+  ##  time.sleep(60);
+  ##print('** Surrogate optimization complete!\n')
+  ##command_string = "rm " + end_name
+  ##print(command_string)
+  ##os.system(command_string)
 
   # Clean up files and get ready for the next iteration
   if(count < 2):
@@ -935,9 +966,10 @@ def coronaryTuningIteration(count, rigidFlag):
     command_string = 'mv ' + sim_folder + ' ' + folder_name
     print(command_string)
     os.system(command_string)
-    output_file = glob.glob('*.o*')
-    error_file = glob.glob('*.e*')
-    command_string = "mv AllData " + output_file[0] + " " + error_file[0] + " " + folder_name
+    ##output_file = glob.glob('*.o*')
+    ##error_file = glob.glob('*.e*')
+    ##command_string = "mv AllData " + output_file[0] + " " + error_file[0] + " " + folder_name
+    command_string = "mv AllData " +  folder_name
     print(command_string)
     os.system(command_string)
 
@@ -1014,7 +1046,7 @@ def rigidPresolve():
    
   rikka = 0
   for br_area in A_br:
-    temp_res = 8.0*distance_list[rikka]*0.04 / (math.pi * (br_area/math.pi)**2 )
+    temp_res = 8.0*(distance_list[rikka])*0.04 / (math.pi * (br_area/math.pi)**2 )
     temp_res = min(temp_res, 25000)
     model3dres.append(temp_res)
     L_surr.append(5.25)
@@ -1066,12 +1098,12 @@ def rigidPresolve():
     r_br_murray.append(temp)
 
   for rca_area in A_RCA:
-    temp = (math.sqrt(rca_area/math.pi))**(2.)
+    temp = (math.sqrt(rca_area/math.pi))**(2.66)
     RA_cor = RA_cor + temp
     r_RCA_murray.append(temp)
 
   for lca_area in A_LCA:
-    temp = (math.sqrt(lca_area/math.pi))**(2.)
+    temp = (math.sqrt(lca_area/math.pi))**(2.66)
     RA_cor = RA_cor + temp
     r_LCA_murray.append(temp)
 
@@ -1081,7 +1113,7 @@ def rigidPresolve():
     R_cor = R_tot * (1.0 + beta)/beta
     R_br = R_tot * (1.0 + beta)
   elif splitting_scheme=="owais":
-    R_tot  = meanPressure * pConv/meanFlow
+    R_tot  = (meanPressure * pConv)/meanFlow
     R_cor_l= R_tot/float(f_l) #flow split to the left coronary tree
     R_cor_r= R_tot/float(f_r) #flow split to the right coronary tree
     R_aorta= R_tot/(1.-f_l-f_r) #flow split to the aorta
@@ -1094,21 +1126,21 @@ def rigidPresolve():
     if splitting_scheme=="justin": temp =     R_br*RA_rcr/r_br_murray[i]
     if splitting_scheme=="owais":  temp =  R_aorta*RA_rcr/r_br_murray[i]
     Rrcr_base.append(temp / pConv)
-    Crcr_base.append(A_br[i] * 1540e-6 / max(A_br))
+    Crcr_base.append((A_br[i] * Crcr_estim) / sum(A_br))
 
   Ram_l_base = []
   Rv_l_base = []
   Cam_l_base = []
   Ca_l_base = []
-  C_lca = 1e-5
+  C_lca = 0.5e-6 #MOK original was 1e-5
 
   # Calculate and store the left coronary outlet resistances and capacitances
   for i in range(nCOR_l):
     if splitting_scheme=="justin":temp = RA_cor*R_cor/r_LCA_murray[i]
     if splitting_scheme=="owais": temp = RA_cor*R_cor_l/r_LCA_murray[i]
-    Ram_l_base.append(0.84 * temp / pConv)
-    Rv_l_base.append(0.16 * temp / pConv)
-    CA = C_lca / A_LCA[0]
+    Ram_l_base.append(0.89 * temp / pConv)
+    Rv_l_base.append(0.11 * temp / pConv)
+    CA = C_lca / sum(A_LCA)
     Cam_l_base.append(Cam_scale * A_LCA[i] * CA * pConv)
     Ca_l_base.append(Ca_scale * A_LCA[i] * CA * pConv)
 
@@ -1116,15 +1148,15 @@ def rigidPresolve():
   Rv_r_base = []
   Cam_r_base = []
   Ca_r_base = []
-  C_rca = 1e-5
+  C_rca = 0.25e-6 #MOK: original was 1e-5
    
   # Calculate and store the right coronary outlet resistances and capacitances
   for i in range(nCOR_r):
     if splitting_scheme=="justin": temp = RA_cor*R_cor/r_RCA_murray[i]
     if splitting_scheme=="owais":  temp = RA_cor*R_cor_r/r_RCA_murray[i]
-    Ram_r_base.append(0.84 * temp / pConv)
-    Rv_r_base.append(0.16 * temp / pConv)
-    CA = C_rca / A_RCA[0]
+    Ram_r_base.append(0.89 * temp / pConv)
+    Rv_r_base.append(0.11 * temp / pConv)
+    CA = C_rca / sum(A_RCA)
     Cam_r_base.append(Cam_scale * A_RCA[i] * CA * pConv)
     Ca_r_base.append(Ca_scale * A_RCA[i] * CA * pConv)
 
@@ -1154,73 +1186,73 @@ def rigidPresolve():
 
   temp_string = 'Rrcr'
   for r_rcr in Rrcr_base:
-    temp_string = temp_string + ',{0:.6f}'.format(r_rcr)
+    temp_string = temp_string + ',{0:.8f}'.format(r_rcr)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Crcr'
   for c_rcr in Crcr_base:
-    temp_string = temp_string + ',{0:.6f}'.format(c_rcr)
+    temp_string = temp_string + ',{0:.8f}'.format(c_rcr)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Ram_l'
   for r_am_l in Ram_l_base:
-    temp_string = temp_string + ',{0:.6f}'.format(r_am_l)
+    temp_string = temp_string + ',{0:.8f}'.format(r_am_l)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Rv_l'
   for r_v_l in Rv_l_base:
-    temp_string = temp_string + ',{0:.6f}'.format(r_v_l)
+    temp_string = temp_string + ',{0:.8f}'.format(r_v_l)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Cam_l'
   for c_am_l in Cam_l_base:
-    temp_string = temp_string + ',{0:.6f}'.format(c_am_l)
+    temp_string = temp_string + ',{0:.8f}'.format(c_am_l)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Ca_l'
   for c_a_l in Ca_l_base:
-    temp_string = temp_string + ',{0:.6f}'.format(c_a_l)
+    temp_string = temp_string + ',{0:.8f}'.format(c_a_l)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Ram_r'
   for r_am_r in Ram_r_base:
-    temp_string = temp_string + ',{0:.6f}'.format(r_am_r)
+    temp_string = temp_string + ',{0:.8f}'.format(r_am_r)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Rv_r'
   for r_v_r in Rv_r_base:
-    temp_string = temp_string + ',{0:.6f}'.format(r_v_r)
+    temp_string = temp_string + ',{0:.8f}'.format(r_v_r)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Cam_r'
   for c_am_r in Cam_r_base:
-    temp_string = temp_string + ',{0:.6f}'.format(c_am_r)
+    temp_string = temp_string + ',{0:.8f}'.format(c_am_r)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'Ca_r'
   for c_a_r in Ca_r_base:
-    temp_string = temp_string + ',{0:.6f}'.format(c_a_r)
+    temp_string = temp_string + ',{0:.8f}'.format(c_a_r)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'SurrogateRes'
   for surr_res in model3dres:
-    temp_string = temp_string + ',{0:.6f}'.format(surr_res)
+    temp_string = temp_string + ',{0:.8f}'.format(surr_res)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
   temp_string = 'L_surr'
   for surr_induct in L_surr:
-    temp_string = temp_string + ',{0:.6f}'.format(surr_induct)
+    temp_string = temp_string + ',{0:.8f}'.format(surr_induct)
   temp_string = temp_string + '\n'
   coronaryModel.write(temp_string)
 
@@ -1379,7 +1411,7 @@ def rigidPresolve():
   targetsFile.write('PaoMean,Mean Aortic Pressure,'+str(meanPressure)+'\n')
   targetsFile.write('PaoMean_conv,Mean Aortic Pressure Convergence,0\n')
   targetsFile.write('AorCorSplit,Coronary Flow Split,'+str(sys_cor_split)+'\n')
-  targetsFile.write('AbsQin,Inlet flow rate,'+str(strokeVol)+'\n')
+  targetsFile.write('AbsQin,Inlet flow rate,'+str(meanFlow)+'\n')
   targetsFile.write('AbsQin_conv,Inlet flow rate convergence,0\n')
   targetsFile.write('Qsystole_perc,Percentage of cardiac output in systole,0.9\n')
    
@@ -1817,7 +1849,7 @@ def deformablePresolve():
 
   # Update the coronaryModel.txt to include an inlet capacitor for FSI tuning
   modelFile = open('coronaryModel.txt','a')
-  modelFile.write('Lin,4.0\n')
+  modelFile.write('Lin,4.0\n') 
   modelFile.write('Csurr,0.0006\n')
   modelFile.close()
 
@@ -1855,61 +1887,99 @@ def deformablePresolve():
 #-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-
-  print('This script is for automatically tuning the boundary conditions for closed loop coronary simulations')
-  print('\n First, we use the SimVascular pre-solver to process the mesh')
-  rigidPresolve()
+  for Counter in range(8): #Loop to make sure left-right coronary split is maintained
+    print ("-"*200)
+    print('This script is for automatically tuning the boundary conditions for closed loop coronary simulations')
+    print('\n First, we use the SimVascular pre-solver to process the mesh')
+    rigidPresolve()
   
-  # At this point, all the files we need for rigid tuning are located in a folder
-  # called 'rigid_coronary_tuning_and_simulation' which is located in the current folder
-  # we use system tools to move there and start the rigid tuning
-  command_string = 'cd rigid_coronary_tuning_and_simulation'
-  print(command_string)
-  os.chdir('rigid_coronary_tuning_and_simulation')
+    # At this point, all the files we need for rigid tuning are located in a folder
+    # called 'rigid_coronary_tuning_and_simulation' which is located in the current folder
+    # we use system tools to move there and start the rigid tuning
+    command_string = 'cd rigid_coronary_tuning_and_simulation'
+    print(command_string)
+    os.chdir('rigid_coronary_tuning_and_simulation')
 
-  # Copy over necesary scripts and executables from gcode
-  command_string = 'cp ' + GCODE_BINARY_DIR + 'bin/GenBC .'
-  print(command_string)
-  os.system(command_string)
-  command_string = 'cp ' + GCODE_BINARY_DIR + 'py/optimizeSurrogateRes.py .'
-  print(command_string)
-  os.system(command_string)
+    # Copy over necesary scripts and executables from gcode
+    command_string = 'cp ' + GCODE_BINARY_DIR + 'bin/GenBC .'
+    print(command_string)
+    os.system(command_string)
+    command_string = 'cp ' + GCODE_BINARY_DIR + 'py/optimizeSurrogateRes.py .'
+    print(command_string)
+    os.system(command_string)
 
-  print('Making batch scripts for NM_optimization, SimVascular flowsolver, and surrogate resistance optimization...')
-  makeNM_script()
-  makeFlowsolver_script()
-  makeSurrResOpt_script()
-  coronaryTuningIteration(1, True)
+    print('Making batch scripts for NM_optimization, SimVascular flowsolver, and surrogate resistance optimization...')
+    makeNM_script()
+    makeFlowsolver_script()
+    makeSurrResOpt_script()
+    coronaryTuningIteration(1, True)
   
-  # Once rigid tuning is done, we launch into the deformable presolver
-  deformablePresolve()
+    # Once rigid tuning is done, we launch into the deformable presolver
+    deformablePresolve()
   
-  # Now that deformable pre-solving is done, the files required for FSI_tuning
-  # are located in a folder called 'FSI_coronary_tuning_and_simulation'
-  # Move this folder one up then run the FSI tuning from there
-  command_string = 'mv FSI_coronary_tuning_and_simulation ..'
-  print(command_string)
-  os.system(command_string)
+    # Now that deformable pre-solving is done, the files required for FSI_tuning
+    # are located in a folder called 'FSI_coronary_tuning_and_simulation'
+    # Move this folder one up then run the FSI tuning from there
+    command_string = 'mv FSI_coronary_tuning_and_simulation ..'
+    print(command_string)
+    os.system(command_string)
   
-  # Now we move into that directory
-  command_string = 'cd ../FSI_coronary_tuning_and_simulation' #add ../ at the front
-  print(command_string)
-  os.chdir('../FSI_coronary_tuning_and_simulation')
+    # Now we move into that directory
+    command_string = 'cd ../FSI_coronary_tuning_and_simulation' #add ../ at the front
+    print(command_string)
+    os.chdir('../FSI_coronary_tuning_and_simulation')
   
-  # Copy over necesary scripts and executables from gcode
-  command_string = 'cp ' + GCODE_BINARY_DIR + 'bin/GenBC .'
-  print(command_string)
-  os.system(command_string)
-  command_string = 'cp ' + GCODE_BINARY_DIR + 'py/optimizeSurrogateCom.py .'
-  print(command_string)
-  os.system(command_string)
+    # Copy over necesary scripts and executables from gcode
+    command_string = 'cp ' + GCODE_BINARY_DIR + 'bin/GenBC .'
+    print(command_string)
+    os.system(command_string)
+    command_string = 'cp ' + GCODE_BINARY_DIR + 'py/optimizeSurrogateCom.py .'
+    print(command_string)
+    os.system(command_string)
 
-  print('Making batch scripts for NM_optimization, SimVascular flowsolver, and surrogate resistance optimization...')
-  makeNM_script()
-  makeFlowsolver_script()
-  makeSurrComOpt_script()
-  coronaryTuningIteration(1, False)
+    print('Making batch scripts for NM_optimization, SimVascular flowsolver, and surrogate resistance optimization...')
+    makeNM_script()
+    makeFlowsolver_script()
+    makeSurrComOpt_script()
+    coronaryTuningIteration(1, False)
 
+    #Change the working directory to original one
+    os.chdir(WORKING_DIRECTORY)
+
+    #Save the Flow Splits to the file
+    with open("LeftRightFlowSplit.dat",'a') as Flow_split_file:
+      Flow_split_file.write("%d %.04f %.04f %.04f %.04f %.04f %.04f\n"%(Counter, sys_cor_split, Aor_Cor_split_computed, Left_Cor_split_assigned, Left_Cor_split_computed, f_l, f_r))  
+
+   #Check to ensure left and right coronary split is maintained
+    Diff=(Left_Cor_split_computed-Left_Cor_split_assigned)
+    print ("The Left Coronary Split is: %.02f "%Left_Cor_split_computed)
+    if Diff<2 and Diff>-2:
+      break
+    elif Diff>2:
+      f_l=f_l*(Left_Cor_split_assigned/Left_Cor_split_computed)
+      f_r=(sys_cor_split/100.)-f_l
+      print ("The Updated Left Split is: %.03f"%f_l)
+      print ("The Updated Right Split is: %.03f"%f_r)
+      os.system("mkdir Coronary_Flow_Split_Iteration%d"%Counter)
+      os.system("mv FSI_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
+      os.system("mv rigid_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
+      os.system("mv coronaryLPN.svpre Coronary_Flow_Split_Iteration%d/"%Counter)
+
+    elif Diff<-2:
+      f_l=f_l*(Left_Cor_split_computed/Left_Cor_split_assigned)
+      f_r=(sys_cor_split/100.)-f_l
+      print ("The Updated Left Split is: %.03f"%f_l)
+      print ("The Updated Right Split is: %.03f"%f_r)
+      os.system("mkdir Coronary_Flow_Split_Iteration%d"%Counter)
+      os.system("mv FSI_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
+      os.system("mv rigid_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
+      os.system("mv coronaryLPN.svpre Coronary_Flow_Split_Iteration%d/"%Counter)
+
+    else:
+      print ("There is an error. Check the Flow Split Conditions")
+
+
+    
 #-------------------------------------------------------------------------------
 
 
