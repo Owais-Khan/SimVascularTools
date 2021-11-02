@@ -29,6 +29,7 @@ class PostProcess3DResults():
 		
 		#If outfolder is not defined
 		if self.Args.OutFolder is None:
+			os.system("mkdir ./PostProcessedData")
 			self.Args.OutFolder="./PostProcessedData"
 
 		#Define Heart Beat
@@ -39,15 +40,41 @@ class PostProcess3DResults():
 		if (self.Args.NonCapPlanes is True) and (self.Args.NonCapPlanesFolder is None):
 			self.Args.NonCapPlanesFolder="./ClippedPlanes"
 
+
 	def Main(self):
-		#Compute the Average Quantities over the Surface
+		#Compute the averaged quantities over the Surface
+		#Also compute velocity/pressure over outlet slices
+		self.ComputeTemporalStatistics("Surface")
+
+		#Compute the Average Quantities over the Volume
+		#Also compute Velocity/Pressure over non-outlet slices in ./ClippedPlanes
 		self.ComputeTemporalStatistics("Volume")
 	
+		#Now We want to add slices througout the model
+		
 
-vmtkmeshmergetimesteps -directory ./ -firststep 4000 -laststep 7000 -intervalstep 10 -pattern all_results.vtu_%5s.vtu -ofile mesh_timesteps.vtu -velocityvector 1 -vector velocity
+
+	def ParticleTracer(self):
+		#Create a folder for velocity vector
+		os.system("%s/PartcileTracer"%self.ResultsFolder)
+		os.system("%s/ParticleTracer/VelocityData"%self.ResultsFolder)
+	
+		N_cycles=6
+	
+		#Create a Symbolic Link to Velocity Data for 
+                for i in range(self.Args.StartTimestep,self.Args.StopTimestep,self.Args.Increment):
+                        VolumeFileName_ =glob("%s/*%.05d.vtu"%(self.Args.ResultsFolder,i))[0]
+                        if len(VolumeFileName_)==0: print ("Could Not Find the File at TimeStep: %.05d"%i)
+				
+				
+
+		os.system("vmtkmeshmergetimesteps -directory ./ -firststep 4000 -laststep 7000 -intervalstep 10 -pattern all_results.vtu_%5s.vtu -ofile mesh_timesteps.vtu -velocityvector 1 -vector velocity")
 
 
-vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofile traces.vtp -maximumnumberofsteps 1000vmtkrenderer -background 1 1 1 --pipe vmtksurfaceviewer -ifile all_results.vtp_04000.vtp  -opacity 0.03 --pipe vmtksurfaceviewer -ifile wall_svg_to_lcx_pre.tec -opacity 0.1 --pipe vmtksurfaceviewer -ifile wall_svg_to_ramus.tec -opacity 0.12 --pipe vmtkpathlineanimator -ifile traces.vtp -timestep 0.02 -legend 0 -maxtime 6 -pointsize 12 -colormap blackbody -screenshot 1 -imagesdirectory ./animations/
+		os.system("vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofile traces.vtp -maximumnumberofsteps 1000")
+	
+		os.system("vmtkrenderer -background 1 1 1 --pipe vmtksurfaceviewer -ifile all_results.vtp_04000.vtp  -opacity 0.03 --pipe vmtksurfaceviewer -ifile wall_svg_to_lcx_pre.tec -opacity 0.1 --pipe vmtksurfaceviewer -ifile wall_svg_to_ramus.tec -opacity 0.12 --pipe vmtkpathlineanimator -ifile traces.vtp -timestep 0.02 -legend 0 -maxtime 6 -pointsize 12 -colormap blackbody -screenshot 1 -imagesdirectory ./animations/")
+
 	
 
 	def ComputeTemporalStatistics(self,Tag):
@@ -155,10 +182,10 @@ vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofil
 		else: outfile=open(self.Args.OutFolder+"/NonCapData.dat",'w')
 		#In the file header, add all of the time-averaged quantities
 		outfile.write("#Temporal Averages\n")
-		outfile.write("#CapName, Velocity, VelocityMaximum, CapArea, FlowRate, Pressure\n")
+		outfile.write("#CapName, Velocity, VelocityMaximum, CapArea, FlowRate, Pressure, SystolicPressure, DiastolicPressure \n")
 		for key in DataVelAverage:
 			CapName_=key.split("/")[-1].replace(".vtp","")
-			outfile.write("%s %.05f %.05f %.05f %.05f %.05f\n"%(CapName_,np.average(DataVelAverage[key]),np.average(DataVelMax[key]),CapAreas[key],np.average(DataVelAverage[key])*CapAreas[key],np.average(DataPres[key])*self.PressureScale))	
+			outfile.write("#%s %.05f %.05f %.05f %.05f %.05f %.05f %.05f\n"%(CapName_,np.average(DataVelAverage[key]),np.average(DataVelMax[key]),CapAreas[key],np.average(DataVelAverage[key])*CapAreas[key],np.average(DataPres[key])*self.PressureScale,np.max(DataPres[key])*self.PressureScale,np.min(DataPres[key])*self.PressureScale))	
 			
 		outfile.write('TITLE="Outlet FLow Rates and Velocities"\n')
 		outfile.write('VARIABLES="Time", "Velocity","VelocityMaximum","FlowRate","Pressure"\n')
@@ -174,7 +201,7 @@ vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofil
 
 			outfile.write('Zone T="%s", I=%d, F=POINT\n'%(key,len(DataVelAverage[key])))
 			for i in range(len(DataVelAverage[key])):
-				outfile.write("%.06f %.06f %.06f %.06f %.06f\n"%(Time[i],DataVelAverage[key][i],DataVelMax[key][i],DataVelAverage[key][i]*CapAreas[key],DataPres[key][i]*self.PressureScale))
+				outfile.write("%.06f %.06f %.06f %.06f %.06f %.06f %.06f\n"%(Time[i],DataVelAverage[key][i],DataVelMax[key][i],DataVelAverage[key][i]*CapAreas[key],DataPres[key][i]*self.PressureScale))
 			
 
 			counter+=1
@@ -188,7 +215,7 @@ vmtkparticletracer -ifile mesh_timesteps_temp.vtu -sfile source_append.vtp -ofil
 		Caps_inflow=sorted(glob(self.Args.InputMeshFolder+"/mesh-surfaces/inflow.vtp"))
 		
 		#Put all of these names in a singe array
-		CapNames=Cap_inflow+Caps_Aorta+Caps_LCA+Caps_RCA
+		CapNames=Caps_inflow+Caps_Aorta+Caps_LCA+Caps_RCA
 
 		return CapNames	
 
