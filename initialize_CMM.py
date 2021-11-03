@@ -57,7 +57,14 @@ Pao_mean = meanPressure # mmHg
 Qmean = meanFlow # mL/s
 
 # ** Mesh information
-MESH_SURFACES_PATH = os.getcwd()+"/mesh-complete/mesh-surfaces"#'/scratch/users/mokhan/cabg_simulations/VG-2017-3_fine_pre/mesh-complete/mesh-surfaces'
+MESH_SURFACES_PATH = os.getcwd()+"/mesh-complete/mesh-surfaces"
+
+# Remove the cap tags if present
+CapFileNames=glob.glob(MESH_SURFACES_PATH+"/cap_*.vtp")
+for CapFileName in CapFileNames:
+        os.system("mv %s %s"%(CapFileName, CapFileName.replace("cap_","")))
+
+
 INFLOW_TAG = 'inflow'
 
 # ** Executables and file paths
