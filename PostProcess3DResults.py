@@ -6,7 +6,7 @@ from glob import glob
 import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
-
+from ComputeCenterlines import ComputeCenterlines
 class PostProcess3DResults():
 	def __init__(self,Args):
 		self.Args=Args
@@ -42,17 +42,25 @@ class PostProcess3DResults():
 
 
 	def Main(self):
-		#Compute the averaged quantities over the Surface
-		#Also compute velocity/pressure over outlet slices
+                #Compute the averaged quantities over the Surface
+                #Also compute velocity/pressure over outlet slices
 		self.ComputeTemporalStatistics("Surface")
 
-		#Compute the Average Quantities over the Volume
-		#Also compute Velocity/Pressure over non-outlet slices in ./ClippedPlanes
+                #Compute the Average Quantities over the Volume
+                #Also compute Velocity/Pressure over non-outlet slices in ./ClippedPlanes
 		self.ComputeTemporalStatistics("Volume")
-	
-		#Now We want to add slices througout the model
+
+
+
+		#Compute Centerlines
+		#ComputeCenterlines(self.Args).Main()
+		
+		#os.system("vmtkcenterlines -ifile %s/walls_combined.vtp -ofile %s/Centerlines.vtp -seedselector openprofiles -resampling 1 -resamplingstep 0.2"%(self.Args.InputMeshFolder, self.Args.OutFolder))
 		
 
+		#Now We want to add slices througout the model"""
+
+		#os.system("vmtkcenterlinemeshsections -ifile %s/VolumeData_TimeAveragedResults.vtu -centerlinesfile %s/Centerlines.vtp -ofile %s/Velocity_Sections.vtp"%(self.Args.OutFolder,self.Args.OutFolder,self.Args.OutFolder))	
 
 	"""def ParticleTracer(self):
 		#Create a folder for velocity vector
@@ -284,7 +292,7 @@ if __name__=="__main__":
 	#Increment
 	parser.add_argument('-incr', '--Increment', type=int, required=False, dest="Increment", help="The increment for the timestep files to process")
 
-	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=True, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
+	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=False, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
 	
 	#Define the argument for non-cap planes 
 	parser.add_argument('-NonCapPlanes', '--NonCapPlanes', type=bool, required=False, dest="NonCapPlanes", default=True, help="Tag to incidate whether there are cut-planes to processed that are not outlets")
