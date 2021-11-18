@@ -7,6 +7,7 @@ import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy
 from vtk.util.numpy_support import numpy_to_vtk
 from ComputeCenterlines import ComputeCenterlines
+#from ConvertRestartToVtu.py import ConvertRestartToVtu
 class PostProcess3DResults():
 	def __init__(self,Args):
 		self.Args=Args
@@ -128,7 +129,7 @@ class PostProcess3DResults():
 			#################### Compute the Values at Outlets #########################
 			if i==self.Args.StartTimestep: os.system("mkdir %s/CapSurface/"%self.Args.OutFolder)
 			for CapName_ in CapNames:
-				CapOutFileName_="%s/CapSurfaceData/%s_%05d.vtp"%(self.Args.OutFolder,CapName_.split("/")[-1].replace(".vtp",""),i)
+				CapOutFileName_="%s/CapSurface/%s_%05d.vtp"%(self.Args.OutFolder,CapName_.split("/")[-1].replace(".vtp",""),i)
 				if Tag=="Surface": 
 					os.system("vmtksurfaceprojection -rfile %s -ifile %s -ofile %s"%(SurfaceFileName_,CapName_,CapOutFileName_))	
 					CapSurface_=self.ReadVtpFile(CapOutFileName_)
@@ -292,7 +293,7 @@ if __name__=="__main__":
 	#Increment
 	parser.add_argument('-incr', '--Increment', type=int, required=False, dest="Increment", help="The increment for the timestep files to process")
 
-	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=False, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
+	parser.add_argument('-HeartBeat', '--HeartBeat', type=int, required=True, dest="HeartBeat", help="The Heart Beat for the patient to calculate the period of the cycle")
 	
 	#Define the argument for non-cap planes 
 	parser.add_argument('-NonCapPlanes', '--NonCapPlanes', type=bool, required=False, dest="NonCapPlanes", default=True, help="Tag to incidate whether there are cut-planes to processed that are not outlets")
