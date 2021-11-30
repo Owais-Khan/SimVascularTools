@@ -12,22 +12,30 @@ pConv = 1333.34
 
 # ******************* DEFINE USER INPUTS IN THIS BLOCK ************************
 # ** Patient clinical information (if not known, indicate 'NONE')
+infile=open("EchoData.dat",'r')
+Pao_min=0; Pao_max=0; ejectFract=0; sys_cor_split=0; meanFlow=0
+for LINE in infile:
+	line=LINE.split("=")
+	if line[0]=="Pao_min": Pao_min=float(line[-1])
+	if line[0]=="Pao_max": Pao_max=float(line[-1])
+	if line[0]=="ejectFract": ejectFract=float(line[-1])
+	if line[0]=="sys_cor_split": sys_cor_split=float(line[-1])
+	if line[0]=="meanFlow": meanFlow=float(line[-1])
+if Pao_min==0 or Pao_max==0 or ejectFract==0 or sys_cor_split==0 or meanFlow==0:
+	print ("One of the parameters was not defined in EchoData.dat")
+	print ("I am exiting...")
+	exit(1) 
+infile.close()
 
-heart_rate = 57.3 #BPM
-Pao_min    = 89.8 # mmHg
-Pao_max    = 151.3 # mmHg
-strokeVol = 99.0 # mL
-ejectFract = 0.69
-sys_cor_split=6.37 #The fraction of cardiac output to all coronary arteries
 
 meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
+heart_rate=60 #BPM
 Ppul_mean = 14.0 # mmHg
 Qla_ratio = 'None' #1.07 # Ratio of 'early' to 'late' flows into LV (i.e. E/A wave)
 mit_valve = 'None' #0.763  #0.56 # Fraction of heart cycle that mitral valve is open for
 aor_valve = 'None' #0.311  #0.39 # Fraction of heart cycle that aortic valve is open for
 pul_valve = 'None' #0.377  #0.374 # Fraction of heart cycle that pulmonary valve is open for
 Pra_mean = 'None'  #3.0 # mmHg - IVC right atrial mean pressure
-meanFlow = strokeVol*(float(heart_rate)/60.0) # mL/s
 Cam_scale = 0.89
 Ca_scale = 0.11
 Crcr_estim = 100e-6 #compliance of the aorta (estimate from 3ewk)
@@ -81,6 +89,11 @@ lcaBranchTag = 'lca'
 lcxBranchTag = 'lcx'
 rcaBranchTag = 'rca'
 inflowTag = 'inflow'
+
+# Remove the cap tags if present
+CapFileNames=glob.glob(MESH_SURFACES_PATH+"/cap_*.vtp")
+for CapFileName in CapFileNames:
+	os.system("mv %s %s"%(CapFileName, CapFileName.replace("cap_","")))
 
 # ** Executables and file paths
 GCODE_BINARY_DIR = '/home/k/khanmu11/khanmu11/Softwares/0DSolver/lpnbin/'
