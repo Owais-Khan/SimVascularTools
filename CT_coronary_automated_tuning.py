@@ -16,16 +16,27 @@ infile=open("EchoData.dat",'r')
 Pao_min=0; Pao_max=0; ejectFract=0; sys_cor_split=0; meanFlow=0
 for LINE in infile:
 	line=LINE.split("=")
-	if line[0]=="Pao_min": Pao_min=float(line[-1])
-	if line[0]=="Pao_max": Pao_max=float(line[-1])
-	if line[0]=="ejectFract": ejectFract=float(line[-1])
-	if line[0]=="sys_cor_split": sys_cor_split=float(line[-1])
-	if line[0]=="meanFlow": meanFlow=float(line[-1])
+	if line[0].split()[0]=="Pao_min": 
+		Pao_min=float(line[-1])
+		print ("The minimum pressure is: %.03f"%Pao_min)
+	if line[0].split()[0]=="Pao_max": 
+		Pao_max=float(line[-1])
+		print ("The maximum pressure is: %.03f"%Pao_max)
+	if line[0].split()[0]=="ejectFract": 
+		ejectFract=float(line[-1])
+		print ("The Ejection Fraction is: %.03f"%ejectFract)
+	if line[0].split()[0]=="sys_cor_split": 
+		sys_cor_split=float(line[-1])
+		print ("The Coronary Flow Split is: %.03f"%sys_cor_split)
+	if line[0].split()[0]=="meanFlow": 
+		meanFlow=float(line[-1])
+		print ("The Mean Flow Rate is: %.03f"%meanFlow)
+infile.close()
+
 if Pao_min==0 or Pao_max==0 or ejectFract==0 or sys_cor_split==0 or meanFlow==0:
 	print ("One of the parameters was not defined in EchoData.dat")
 	print ("I am exiting...")
 	exit(1) 
-infile.close()
 
 
 meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
