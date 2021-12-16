@@ -18,40 +18,23 @@ import time
 import numpy as np
 import math
 
-infile=open("EchoData.dat",'r')
-Pao_min=0; Pao_max=0; ejectFract=0; sys_cor_split=0; meanFlow=0
-for LINE in infile:
-	line=LINE.split("=")
-	if line[0].split()[0]=="Pao_min": 
-		Pao_min=float(line[-1])
-		print ("The minimum pressure is: %.03f"%Pao_min)
-	if line[0].split()[0]=="Pao_max": 
-		Pao_max=float(line[-1])
-		print ("The maximum pressure is: %.03f"%Pao_max)
-	if line[0].split()[0]=="ejectFract": 
-		ejectFract=float(line[-1])
-		print ("The Ejection Fraction is: %.03f"%ejectFract)
-	if line[0].split()[0]=="sys_cor_split": 
-		sys_cor_split=float(line[-1])
-		print ("The Coronary Flow Split is: %.03f"%sys_cor_split)
-	if line[0].split()[0]=="meanFlow": 
-		meanFlow=float(line[-1])
-		print ("The Mean Flow Rate is: %.03f"%meanFlow)
-infile.close()
-
-if Pao_min==0 or Pao_max==0 or ejectFract==0 or sys_cor_split==0 or meanFlow==0:
-	print ("One of the parameters was not defined in EchoData.dat")
-	print ("I am exiting...")
-	exit(1)
+username="ana"
+#----------------------
+heart_rate = 79.1 #BPM
+Pao_min = 74.5 # mmHg
+Pao_max = 159.7 # mmHg
+strokeVol = 101.0 # mL
+ejectFract = 0.61
+sys_cor_split= 3.90
 
 meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
-heart_rate=60
 Ppul_mean = 14.0 # mmHg
 Qla_ratio = 'None'#1.07 # Ratio of 'early' to 'late' flows into LV (i.e. E/A wave)
 mit_valve = 'None'#0.56 # Fraction of heart cycle that mitral valve is open for
 aor_valve = 'None'#0.39 # Fraction of heart cycle that aortic valve is open for
 pul_valve = 'None'#0.374 # Fraction of heart cycle that pulmonary valve is open for
 Pra_mean = 'None'#3.0 # mmHg - IVC right atrial mean pressure
+meanFlow = strokeVol*(float(heart_rate)/60.0) # mL/s
 Cam_scale = 0.89
 Ca_scale = 0.11
 
@@ -76,20 +59,13 @@ Pao_mean = meanPressure # mmHg
 Qmean = meanFlow # mL/s
 
 # ** Mesh information
-MESH_SURFACES_PATH = os.getcwd()+"/mesh-complete/mesh-surfaces"
-
-# Remove the cap tags if present
-CapFileNames=glob.glob(MESH_SURFACES_PATH+"/cap_*.vtp")
-for CapFileName in CapFileNames:
-        os.system("mv %s %s"%(CapFileName, CapFileName.replace("cap_","")))
-
-
+MESH_SURFACES_PATH = os.getcwd()+"/mesh-complete/mesh-surfaces"#'/scratch/users/mokhan/cabg_simulations/VG-2017-3_fine_pre/mesh-complete/mesh-surfaces'
 INFLOW_TAG = 'inflow'
 
 # ** Executables and file paths
-SVSOLVER_PATH    = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
-PRESOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
-POSTSOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
+SVSOLVER_PATH    = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'%username
+PRESOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'%username
+POSTSOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'%username
 
 
 # ** Cluster settings

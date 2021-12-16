@@ -9,49 +9,31 @@ import math
 from scipy.optimize import minimize
 pConv = 1333.34
 
-
+username="ana"
 # ******************* DEFINE USER INPUTS IN THIS BLOCK ************************
 # ** Patient clinical information (if not known, indicate 'NONE')
-infile=open("EchoData.dat",'r')
-Pao_min=0; Pao_max=0; ejectFract=0; sys_cor_split=0; meanFlow=0
-for LINE in infile:
-	line=LINE.split("=")
-	if line[0].split()[0]=="Pao_min": 
-		Pao_min=float(line[-1])
-		print ("The minimum pressure is: %.03f"%Pao_min)
-	if line[0].split()[0]=="Pao_max": 
-		Pao_max=float(line[-1])
-		print ("The maximum pressure is: %.03f"%Pao_max)
-	if line[0].split()[0]=="ejectFract": 
-		ejectFract=float(line[-1])
-		print ("The Ejection Fraction is: %.03f"%ejectFract)
-	if line[0].split()[0]=="sys_cor_split": 
-		sys_cor_split=float(line[-1])
-		print ("The Coronary Flow Split is: %.03f"%sys_cor_split)
-	if line[0].split()[0]=="meanFlow": 
-		meanFlow=float(line[-1])
-		print ("The Mean Flow Rate is: %.03f"%meanFlow)
-infile.close()
 
-if Pao_min==0 or Pao_max==0 or ejectFract==0 or sys_cor_split==0 or meanFlow==0:
-	print ("One of the parameters was not defined in EchoData.dat")
-	print ("I am exiting...")
-	exit(1) 
-
+heart_rate = 60 #BPM
+Pao_min    = 89.8 # mmHg
+Pao_max    = 151.3 # mmHg
+strokeVol = 80.85 # mL
+ejectFract = 0.69
+sys_cor_split= 6.37 #The fraction of cardiac output to all coronary arteries
 
 meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
-heart_rate=60 #BPM
 Ppul_mean = 14.0 # mmHg
 Qla_ratio = 'None' #1.07 # Ratio of 'early' to 'late' flows into LV (i.e. E/A wave)
 mit_valve = 'None' #0.763  #0.56 # Fraction of heart cycle that mitral valve is open for
 aor_valve = 'None' #0.311  #0.39 # Fraction of heart cycle that aortic valve is open for
 pul_valve = 'None' #0.377  #0.374 # Fraction of heart cycle that pulmonary valve is open for
 Pra_mean = 'None'  #3.0 # mmHg - IVC right atrial mean pressure
+meanFlow = strokeVol*(float(heart_rate)/60.0) # mL/s
 Cam_scale = 0.89
 Ca_scale = 0.11
 Crcr_estim = 100e-6 #compliance of the aorta (estimate from 3ewk)
+
 # ************************* Left and Right Coronary Split *******************
-#Write a file to store flow Split data
+#Write  file to store flow Split data
 Left_Cor_split_assigned=70
 Right_Cor_split_assigned=100-Left_Cor_split_assigned
 
@@ -108,8 +90,8 @@ for CapFileName in CapFileNames:
 
 # ** Executables and file paths
 GCODE_BINARY_DIR = '/home/k/khanmu11/khanmu11/Softwares/0DSolver/lpnbin/'
-PRESOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
-POST_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
+PRESOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'%username
+POST_SOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'%username
 
 
 # ** Cluster settings
@@ -223,7 +205,7 @@ def makeFlowsolver_script():
   runScript_base(SOLVER_SCRIPT, 'svFlowsolver', 1, FLOWSOLVER_NODES, PROCESSORS)
   flow_script = open(SOLVER_SCRIPT, 'a')
   flow_script.write('\n')
-  flow_script.write(RUN_COMMAND + ' /home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe\n')
+  flow_script.write(RUN_COMMAND + ' /home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe\n'%username)
   flow_script.close()
 
 #-------------------------------------------------------------------------------
