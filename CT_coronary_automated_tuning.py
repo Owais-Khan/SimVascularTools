@@ -9,7 +9,7 @@ import math
 from scipy.optimize import minimize
 pConv = 1333.34
 
-username="ana"
+
 # ******************* DEFINE USER INPUTS IN THIS BLOCK ************************
 # ** Patient clinical information (if not known, indicate 'NONE')
 
@@ -30,7 +30,7 @@ Pra_mean = 'None'  #3.0 # mmHg - IVC right atrial mean pressure
 meanFlow = strokeVol*(float(heart_rate)/60.0) # mL/s
 Cam_scale = 0.89
 Ca_scale = 0.11
-Crcr_estim = 100e-6 #compliance of the aorta (estimate from 3ewk)
+Crcr_estim = 50e-6 #compliance of the aorta (estimate from 3ewk)
 
 # ************************* Left and Right Coronary Split *******************
 #Write  file to store flow Split data
@@ -90,8 +90,8 @@ for CapFileName in CapFileNames:
 
 # ** Executables and file paths
 GCODE_BINARY_DIR = '/home/k/khanmu11/khanmu11/Softwares/0DSolver/lpnbin/'
-PRESOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'%username
-POST_SOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'%username
+PRESOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
+POST_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
 
 
 # ** Cluster settings
@@ -188,6 +188,7 @@ def runScript_base(scriptName, jobName, time, nodes, procs):
   scriptFile.write('#SBATCH --mail-type=begin\n')
   scriptFile.write('#SBATCH --mail-type=end\n\n')
   scriptFile.write('# Name of the executable you want to run on the cluster\n')
+  scriptFile.write("module purge; module load cmake lsb-release intelpython3/2019u4 gcc/8.3.0 openmpi/4.0.1 vtk/9.0.1\n")
   scriptFile.close()
   
 #-------------------------------------------------------------------------------
@@ -205,7 +206,7 @@ def makeFlowsolver_script():
   runScript_base(SOLVER_SCRIPT, 'svFlowsolver', 1, FLOWSOLVER_NODES, PROCESSORS)
   flow_script = open(SOLVER_SCRIPT, 'a')
   flow_script.write('\n')
-  flow_script.write(RUN_COMMAND + ' /home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe\n'%username)
+  flow_script.write(RUN_COMMAND + ' /home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe\n')
   flow_script.close()
 
 #-------------------------------------------------------------------------------

@@ -18,14 +18,12 @@ import time
 import numpy as np
 import math
 
-username="ana"
-#----------------------
-heart_rate = 79.1 #BPM
-Pao_min = 74.5 # mmHg
-Pao_max = 159.7 # mmHg
-strokeVol = 101.0 # mL
-ejectFract = 0.61
-sys_cor_split= 3.90
+heart_rate = 73.6 #BPM
+Pao_min = 61.8 # mmHg
+Pao_max = 118.0 # mmHg
+strokeVol = 73.0 # mL
+ejectFract = 0.65
+sys_cor_split= 2.77
 
 meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
 Ppul_mean = 14.0 # mmHg
@@ -63,9 +61,9 @@ MESH_SURFACES_PATH = os.getcwd()+"/mesh-complete/mesh-surfaces"#'/scratch/users/
 INFLOW_TAG = 'inflow'
 
 # ** Executables and file paths
-SVSOLVER_PATH    = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'%username
-PRESOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'%username
-POSTSOLVER_PATH = '/home/k/khanmu11/%s/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'%username
+SVSOLVER_PATH    = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
+PRESOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
+POSTSOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
 
 
 # ** Cluster settings
@@ -140,6 +138,8 @@ def runScript_base(scriptName, jobName, time, nodes, procs):
   scriptFile.write('#SBATCH --mail-type=begin\n')
   scriptFile.write('#SBATCH --mail-type=end\n\n')
   scriptFile.write('# Name of the executable you want to run on the cluster\n')
+  scriptFile.write("module purge; module load cmake lsb-release intelpython3/2019u4 gcc/8.3.0 openmpi/4.0.1 vtk/9.0.1\n")
+
   scriptFile.close()
   
 #-------------------------------------------------------------------------------
