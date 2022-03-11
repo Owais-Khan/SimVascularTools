@@ -45,7 +45,10 @@ class ComputeSurfaceHemodynamics():
 		WSS3avg=np.average(WSS3,axis=0)
 		OSI=np.zeros(len(WSS1avg))
 		for i in range(len(WSS1avg)):
-			OSI[i]=0.5*(1-np.sqrt(WSS1avg[i]**2+WSS2avg[i]**2+WSS3avg[i]**2)/TAWSS[i])	
+			if TAWSS[i]==0:
+				OSI[i]=0
+			else:
+				OSI[i]=0.5*(1-np.sqrt(WSS1avg[i]**2+WSS2avg[i]**2+WSS3avg[i]**2)/TAWSS[i])	
 		#Compute Relative Residence Time
 		print ("--- Computing Relative Residence Time (RRT)")
 		RRT=1/((1-2*OSI)*TAWSS)	
@@ -66,6 +69,9 @@ class ComputeSurfaceHemodynamics():
 
 		#Add all of the Arrays
 		self.AddArray("TAWSS",TAWSS,Surface)
+		self.AddArray("OSI",OSI,Surface)
+		self.AddArray("RRT",RRT,Surface)
+		self.AddArray("Pressure",Pressure,Surface)
 		WriteVTPFile(self.Args.OutputFileName,Surface)	
 		
 
