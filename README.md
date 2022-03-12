@@ -26,7 +26,7 @@ The above script will generate a folder ```PostProcessedData``` which will conta
 
 ## SimVascular Scripts for Aortic Simulations
 ### Tuning RCR Parameters
-1. After creating the ```mesh-complete/mesh-surface``` folder, make sure that all surface vtp file names match those provided in the ```FlowSplit.dat``` file. Create a new directory in the Niagara ```$SCRATCH``` directory and copy over the ```mesh-complete``` folder, ```Aortic_Simulations.py```,```inflow.flow```,and ```FlowSplit.dat``` files from your computer directory
+1. After creating the ```mesh-complete/mesh-surface``` folder, make sure that all surface vtp file names match those provided in the ```FlowSplit.dat``` file. Create a new folder in the SciNet ```$SCRATCH``` directory and copy over the ```mesh-complete``` folder, ```Aortic_Simulations.py```,```inflow.flow```,and ```FlowSplit.dat``` files from your computer directory
 2. Load the necessary modules using the following command line
 ```console
 foo@bar:~$ module purge; module load cmake lsb-release intelpython3/2019u4 gcc/8.3.0 openmpi/4.0.1 vtk/9.0.1
@@ -34,6 +34,6 @@ foo@bar:~$ module purge; module load cmake lsb-release intelpython3/2019u4 gcc/8
 3. Update the flow splits inside the ```FlowSplit.dat``` file 
 4. Run the simulation and adjust the period 
 ```console
-python Aortic_Simulation.py -Period 0.5
+foo@bar:~$ python Aortic_Simulation.py -Period 0.5
 ```
 ### Postprocessing Simulation Data 
