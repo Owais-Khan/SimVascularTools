@@ -30,10 +30,10 @@ The above script will generate a folder ```PostProcessedData``` which will conta
 2. Load the necessary modules using the following command line
 ```console
 foo@bar:~$ module purge; module load cmake lsb-release intelpython3/2019u4 gcc/8.3.0 openmpi/4.0.1 vtk/9.0.1
-```
-3. Update the flow splits inside the ```FlowSplit.dat``` file 
-4. Run the simulation and adjust the period 
+``` 
+3. Run the simulation and adjust the period 
 ```console
 foo@bar:~$ python Aortic_Simulation.py -Period 0.5
 ```
+4. Update the ```FlowSplit.dat``` file based on the best iteration resulted from the simulation
 ### Postprocessing Simulation Data 
