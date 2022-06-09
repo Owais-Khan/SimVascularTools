@@ -8,20 +8,21 @@ import numpy as np
 import math
 from scipy.optimize import minimize
 pConv = 1333.34
-USER_EMAIL_ADDRESS="owaiskhan@ryerson.ca"
-PRE_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
-SOLVER_PATH ='/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
-POST_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
+USER_EMAIL_ADDRESS="vivian.tan@ryerson.ca"
+PRE_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
+SOLVER_PATH ='/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
+POST_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
 RUN_COMMAND='srun'
 FLOWSOLVER_NODES=2
 PROCESSORS=40
+WALL_CLOCK_TIME=1
 CPUs=FLOWSOLVER_NODES*PROCESSORS
 BATCH_COMMAND="sbatch "
 class AorticSimulations():
 	def __init__(self):
 		#Patient specific Assigned Parameters
-		self.Pao_min=24 #minimum diastolic pressure (mmHg)
-		self.Pao_max=43.5 #maximum systolic pressure (mmHg)
+		self.Pao_min=42 #minimum diastolic pressure (mmHg)
+		self.Pao_max=69 #maximum systolic pressure (mmHg)
 		
 		#Solver paramters
 		self.Ntimesteps=1000
@@ -85,11 +86,11 @@ class AorticSimulations():
 		infile.close()
 
 		#Run presolver
-		#os.system(PRE_SOLVER_PATH+" AortaFSI.svpre")
+		os.system(PRE_SOLVER_PATH+" AortaFSI.svpre")
 		
 		Error=100 #Error in flow splits
 		Iteration=0.
-		while Error>3:	
+		while Error>5:	
 			#Write rcr file
 			self.WriteRCRFile(FlowSplits_assigned)
 
@@ -116,11 +117,11 @@ class AorticSimulations():
 			Error=0
 			for CapName_ in self.CapNames:
 				Q_split_com=100*FlowSplits_computed[CapName_]
-				Q_split_ass=100*FlowSplits_assigned[CapName_]
+				Q_split_desired=100*FlowSplits[CapName_]
 				print ("\n")
-				print ("Q_assigned for %s: %.03f"%(CapName_,Q_split_ass))
+				print ("Q_desired for %s: %.03f"%(CapName_,Q_split_desired))
 				print ("Q_computed for %s: %.03f"%(CapName_,Q_split_com))
-				Error+=abs(Q_split_com-Q_split_ass)
+				Error+=abs(Q_split_com-Q_split_desired)
 	
 			print ("-"*20)
 			print ("The cumulative error in flow split is: %.03f"%Error)
@@ -130,6 +131,12 @@ class AorticSimulations():
 				FlowSplits_assigned[CapName_]*=(FlowSplits[CapName_]/FlowSplits_computed[CapName_])
 				print (FlowSplits_assigned[CapName_])	
 			Iteration+=1
+			
+			#Kill the loop after 5 iterations
+			if Iteration==5: 
+				print ("Finished running 5 iterations")
+				print ("Killing the infinite loop to save our planet")
+				exit(1)
 	def ComputeAverage(self,Parameter,nStart,nStop):
 		if Parameter=="Q":
 			infile=open(sorted(glob.glob("%d-procs_case/QHist*.dat.%d"%(CPUs,nStop)))[-1],'r')
@@ -157,7 +164,7 @@ class AorticSimulations():
 	
 
 	def Run3DSIM(self):
-		self.WriteJobScript("Niagara_FlowSolver", 'svFlowsolver', 5, FLOWSOLVER_NODES, PROCESSORS)
+		self.WriteJobScript("Niagara_FlowSolver", 'svFlowsolver', WALL_CLOCK_TIME, FLOWSOLVER_NODES, PROCESSORS)
 		flow_script = open("Niagara_FlowSolver", 'a')
 		flow_script.write('\n')
 		flow_script.write(RUN_COMMAND + ' '+SOLVER_PATH+"\n")
