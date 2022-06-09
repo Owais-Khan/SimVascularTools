@@ -29,11 +29,11 @@ The above script will generate a folder ```PostProcessedData``` which will conta
 1. Create a new folder in the SciNet ```$SCRATCH``` directory and copy over the ```mesh-complete``` folder, ```Aortic_Simulations.py```,```inflow.flow```,and ```FlowSplit.dat``` files from your computer directory. Make sure that all surface vtp file names in the ```mesh-complete``` folder match the ```FlowSplit.dat``` file
 2. Load the necessary modules using the following command line
 ```console
-foo@bar:~$ module purge; module load cmake lsb-release intelpython3/2019u4 gcc/8.3.0 openmpi/4.0.1 vtk/9.0.1
+foo@bar:~$ module purge; module load cmake lsb-release intel/2019u4 intelmpi/2019u4 intelpython3/2019u4 gcc/8.3.0 openmpi/4.0.1 vtk/9.0.1; LoadSimVascularModules
 ``` 
-3. Run the simulation and adjust the period 
+3. Run the simulation 
 ```console
-foo@bar:~$ python Aortic_Simulation.py -Period 0.5
+foo@bar:~$ python Aortic_Simulation.py
 ```
 4. Update the ```FlowSplit.dat``` file based on the best iteration resulted from the simulation
 ### Postprocessing Simulation Data 
