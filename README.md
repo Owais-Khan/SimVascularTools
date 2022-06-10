@@ -39,6 +39,7 @@ cap_mesh-surfaceB.vtp 0.5
 cap_mesh-surfaceC.vtp 0.25
 cap_mesh-surfaceD.vtp 0.15
 ```
+------------------------- 
 Here are the specific instructions to run the tuning framework on Niagara cluster:
 1. Create a new folder in the SciNet ```$SCRATCH``` directory and copy over the ```mesh-complete``` folder, ```Aortic_Simulations.py```,```inflow.flow```,and ```FlowSplit.dat``` files from your computer directory. Make sure that all surface vtp file names in the ```mesh-complete``` folder match the ```FlowSplit.dat``` file
 2. Load the necessary modules to run SimVascular using the following command line
