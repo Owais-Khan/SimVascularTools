@@ -9,9 +9,9 @@ import math
 from scipy.optimize import minimize
 pConv = 1333.34
 USER_EMAIL_ADDRESS=""
-PRE_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
-SOLVER_PATH ='/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
-POST_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
+PRE_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
+SOLVER_PATH ='/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
+POST_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
 RUN_COMMAND='srun'
 FLOWSOLVER_NODES=2
 WALL_CLOCK_TIME=2
