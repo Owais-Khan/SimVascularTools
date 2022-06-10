@@ -62,11 +62,24 @@ Now that the tuning framework has finished, hopefully producing the flow rates t
 ```console
 foo@bar:~$ python Aortic_Simulations_fine.py -InputFolder /path/to/the/Coarse/simulation/folder
 ```
-This will copy all the necessary files from the Coarse simulation, and submit the job. Note that the temporal resolution will be twice that of the coarse simulation and 200 solution files will be stored for post-processing the results. 
+This will copy all the necessary files from the Coarse simulation, and submit the job. Note that the temporal resolution will be twice that of the coarse simulation and 200 solution files will be stored for post-processing the results.
+
+You can check the status of your job by typing the following command: `squeue -u [username]` 
 
 You have the following options that you can modify for the script:
 1. ```-Nodes```: The default number of nodes is 5. On Niagara, each node has 40 processors, so the simulation will run with 200 processors in total. You may choose to increase this if you have substantially large mesh (e.g., >5million elements).
 2. ```-WCT```: This is the wall-clock-time parameter. The default is 24 hours. However, if you anticipate that your simulation will finish in less time, you can update it to a different number. 
+
+---
+### 2.3 Post-Processing the Results for visualization
+Once your simulation has finished, you can run the postprocessing script to convert the results into file formats that you can load into Paraview. To do so, please type the following command inside your simulation working directory:
+
+```console
+mkdir results
+degbugjob
+/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe -indir 200-procs_case/ -outdir results/ -start 12000 -stop 16000 -incr 80 -vtu "all_results.vtu" -vtp "all_results.vtp"
+```
+Note that `mkdir results` will create an emppty directory to store the post-processed results. `debugjob` will submit an interactive job on SciNet to run the postsolve. `svpost.exe` command will loop through 12000 to 16000 time step (i.e. 4th cardiac cycle) in increments of 80 time steps. This will generate 200 .vtu (volume) and 200.vtp (surface) files that we can use for computing various hemodynamic quantities.
 
 ---
 
