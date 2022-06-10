@@ -76,9 +76,9 @@ You have the following options that you can modify for the script:
 Once your simulation has finished, you can run the postprocessing script to convert the results into file formats that you can load into Paraview. To do so, please type the following command inside your simulation working directory:
 
 ```console
-mkdir results
-degbugjob
-/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe -indir 200-procs_case/ -outdir results/ -start 12000 -stop 16000 -incr 80 -vtu "all_results.vtu" -vtp "all_results.vtp"
+foo@bar:~$ mkdir results
+foo@bar:~$ degbugjob
+foo@bar:~$ /home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe -indir 200-procs_case/ -outdir results/ -start 12000 -stop 16000 -incr 80 -vtu "all_results.vtu" -vtp "all_results.vtp"
 ```
 Note that `mkdir results` will create an emppty directory to store the post-processed results. `debugjob` will submit an interactive job on SciNet to run the postsolve. `svpost.exe` command will loop through 12000 to 16000 time step (i.e. 4th cardiac cycle) in increments of 80 time steps. This will generate 200 .vtu (volume) and 200.vtp (surface) files that we can use for computing various hemodynamic quantities.
 
