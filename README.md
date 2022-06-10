@@ -28,8 +28,8 @@ The above script will generate a folder ```PostProcessedData``` which will conta
 
 ---
 ---
-## SimVascular Scripts for Aortic Simulations
-### Tuning RCR Parameters
+## 2.0 SimVascular Scripts for Aortic Simulations
+### 2.1 Tuning RCR Parameters
 We can utilize the pipeline below to ensure that the assigned flow rates match the flow rates predicted by the SimVascular CFD simulation. The script is hard-coded for the Niagara cluster on SciNet but can easily be modified for other clusters with minor modifications. To run the script, you will need 4 files
 1. ```Aortic_Simulations.py```: The script that can be obtained from this Github repository. 
 2. ```FlowSplit.dat```: File containing the desird flow splits for each outlet.
@@ -57,7 +57,7 @@ foo@bar:~$ python Aortic_Simulation.py
 The log will be printed out on the screen and also written to the `Output.log` file.
 
 --- 
-### Running the FINE simulation using the tuned parameters.
+### 2.2 Running the FINE simulation using the tuned parameters.
 Now that the tuning framework has finished, hopefully producing the flow rates that you prescribed in `FlowSplit.dat` file, we can use the files generated on the last iteration to run a fine simulation. You need to create a new folder to add the fine `mesh-complete` folder and copy the `Aortic_Simulations_fine.py` from this repository. You can run the following command to submit the simulation job:
 ```console
 foo@bar:~$ python Aortic_Simulations_fine.py -InputFolder /path/to/the/Coarse/simulation/folder
