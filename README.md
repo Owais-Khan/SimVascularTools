@@ -54,13 +54,14 @@ The log will be printed out on the script and also written to the ```Output.log`
 
 --- 
 
-Now that the tuning framework has finished, hopefully producing the flow rates that you prescribed in ```FlowSplit.dat``` file, we can use the files generated on the last iteration to run a fine simulation. Please copy the following files to a new directory where we will run a simulation on a finer mesh:
-1. inflow.flow
-2. Aorta.svpre
-3. solver.inp
-4. numstart.dat
-5. rcrt.dat
-6. Niagara_FlowSolver
+Now that the tuning framework has finished, hopefully producing the flow rates that you prescribed in ```FlowSplit.dat``` file, we can use the files generated on the last iteration to run a fine simulation. You need to create a new folder to add the fine ```mesh-complete``` folder and copy the ```Aortic_Simulations_fine.py``` from this repository. You can run the following command to submit the simulation job:
+```console
+foo@bar:~$ python Aortic_Simulations_fine.py -InputFolder /path/to/the/Coarse/simulation/folder
+```
+You have several options that you can modify for the script with the following arguments:
+1. ```-Nodes```: The default number of nodes is 5. On Niagara, each node has 40 processors, so the simulation will run with 200 processors in total. You may choose to increase this if you have substantially large mesh (e.g., >5million elements).
+2. ```-WCT```: This is the wall-clock-time parameter. The default is 24 hours. However, if you anticipate that your simulation will finish in less time, you can update it to a different number. 
 
+---
 
 

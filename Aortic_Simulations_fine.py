@@ -32,7 +32,7 @@ class Aortic_Simulations_Fine():
 			else: outfile.write(LINE)
 		outfile.close()
 		infile.close()
-		
+		os.system("mv solver_temp.inp solver.inp")	
 		os.system("sbatch Niagara_FlowSolver")	
 	
         
