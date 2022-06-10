@@ -51,6 +51,7 @@ foo@bar:~$ module purge; module load cmake lsb-release intel/2019u4 intelmpi/201
 foo@bar:~$ python Aortic_Simulation.py
 ```
 The log will be printed out on the script and also written to the ```Output.log``` file.
+
 --- 
 
 Now that the tuning framework has finished, hopefully producing the flow rates that you prescribed in ```FlowSplit.dat``` file, we can use the files generated on the last iteration to run a fine simulation. Please copy the following files to a new directory where we will run a simulation on a finer mesh:
