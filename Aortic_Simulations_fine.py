@@ -22,8 +22,8 @@ class Aortic_Simulations_Fine():
 		for LINE in infile:
 			if LINE.find("Number of Timesteps:")>=0:
 				line_=int(LINE.split()[-1])
-				outfile.write("Number of Timesteps: %d\n"%(line_*2))
-				Nsteps=line_*2
+				outfile.write("Number of Timesteps: %d\n"%(line_*4))
+				Nsteps=line_*4
 			elif LINE.find("Time Step Size:")>=0:
 				line_=float(LINE.split()[-1])
 				outfile.write("Time Step Size: %.08f\n"%(line_/2.))
