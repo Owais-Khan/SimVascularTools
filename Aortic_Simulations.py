@@ -8,22 +8,22 @@ import numpy as np
 import math
 from scipy.optimize import minimize
 pConv = 1333.34
-USER_EMAIL_ADDRESS="vivian.tan@ryerson.ca"
-PRE_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
-SOLVER_PATH ='/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
-POST_SOLVER_PATH = '/home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
+USER_EMAIL_ADDRESS="owaiskhan@ryerson.ca"
+PRE_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
+SOLVER_PATH ='/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
+POST_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
 RUN_COMMAND='srun'
 FLOWSOLVER_NODES=2
+WALL_CLOCK_TIME=2
 PROCESSORS=40
-WALL_CLOCK_TIME=1
 CPUs=FLOWSOLVER_NODES*PROCESSORS
 BATCH_COMMAND="sbatch "
 class AorticSimulations():
 	def __init__(self):
 		#Patient specific Assigned Parameters
-		self.Pao_min=42 #minimum diastolic pressure (mmHg)
-		self.Pao_max=69 #maximum systolic pressure (mmHg)
-		
+		self.Pao_min=24 #minimum diastolic pressure (mmHg)
+		self.Pao_max=43.5 #maximum systolic pressure (mmHg)
+		self.tag="Rigid"	
 		#Solver paramters
 		self.Ntimesteps=1000
 		self.Ncycles=2
@@ -66,77 +66,95 @@ class AorticSimulations():
 		self.Rtot=(self.Pao_mean*pConv)/self.FlowRate
 		print ("The total resistance is: %.05f"%self.Rtot)
 
+        
 	def Main(self):
-		#Read the Flow Splits for each of the outlet
+                #Read the Flow Splits for each of the outlet
 		print ("Getting Flow Splits")
 		FlowSplits=self.ReadFlowSplits()
-		FlowSplits_assigned=FlowSplits
-		
+		FlowSplits_assigned=self.ReadFlowSplits()
+                
 		#Generate the presolver file
-		print ("Writing Presolver File") 
+		print ("Writing Presolver File")
 		self.WritePreSolveFile()
 
-		#Generate the Solver file
+                #Generate the Solver file
 		print ("Writing Solver File")
 		self.WriteSolverFile()
-		
+                
 		#Create numstart file 
 		infile=open("numstart.dat",'w')
 		infile.write("0")
 		infile.close()
 
-		#Run presolver
-		os.system(PRE_SOLVER_PATH+" AortaFSI.svpre")
-		
+                #Run presolver
+		os.system(PRE_SOLVER_PATH+" Aorta.svpre")
+                
 		Error=100 #Error in flow splits
 		Iteration=0.
-		while Error>5:	
-			#Write rcr file
+                
+		outfile=open("Output.log",'w')
+		while Error>3:
+                        #Write rcr file
 			self.WriteRCRFile(FlowSplits_assigned)
-
+                        
 			#Run FSI Simulation
 			if len(glob.glob("%s-procs_case"%CPUs))>0:
 				os.system("mv %s-procs_case Try%d_%s-procs_case"%(CPUs,Iteration,CPUs))
+                        
 			self.Run3DSIM()
 
-			#Compute flow split and mean pressures for last cycle
+                        #Compute flow split and mean pressures for last cycle
 			nStart=self.Ntimesteps*(self.Ncycles-1)
 			nStop=self.Ntimesteps*(self.Ncycles)
 			FlowRates=self.ComputeAverage("Q",nStart,nStop)
 			Pressures=self.ComputeAverage("P",nStart,nStop)
 
-			#Computed Flow Splits
+                        #Computed Flow Splits
 			SumQ=0
 			FlowSplits_computed={}
 			for CapName_ in self.CapNames: SumQ+=FlowRates[CapName_]
-			for CapName_ in self.CapNames: 
+			for CapName_ in self.CapNames:
 				FlowSplits_computed[CapName_]=FlowRates[CapName_]/SumQ
-	
-		
-			#Print the assigned and computed flow splits
+
+                        #Print the assigned and computed flow splits
 			Error=0
 			for CapName_ in self.CapNames:
 				Q_split_com=100*FlowSplits_computed[CapName_]
 				Q_split_desired=100*FlowSplits[CapName_]
 				print ("\n")
+				outfile.write("\n")
 				print ("Q_desired for %s: %.03f"%(CapName_,Q_split_desired))
 				print ("Q_computed for %s: %.03f"%(CapName_,Q_split_com))
+                                
+				outfile.write("Q_desired for %s: %.03f\n"%(CapName_,Q_split_desired))
+				outfile.write("Q_computed for %s: %.03f\n"%(CapName_,Q_split_com))
 				Error+=abs(Q_split_com-Q_split_desired)
-	
+
 			print ("-"*20)
 			print ("The cumulative error in flow split is: %.03f"%Error)
-			print ("Current Iterations is: %d"%(Iteration))	
+			print ("Current Iterations is: %d"%(Iteration))
+			outfile.write("The cumulative error in flow split is: %.03f\n"%Error)
+			outfile.write("Current Iterations is: %d\n"%(Iteration))
+                        
 			#Update the flow splits
 			for CapName_ in self.CapNames:
 				FlowSplits_assigned[CapName_]*=(FlowSplits[CapName_]/FlowSplits_computed[CapName_])
-				print (FlowSplits_assigned[CapName_])	
+				print ("Updated Flow Split for %s is: %.05f"%(CapName_,FlowSplits_assigned[CapName_]))
+				outfile.write("Updated Flow Split for %s is: %.05f\n"%(CapName_,FlowSplits_assigned[CapName_]))
+                        
 			Iteration+=1
-			
-			#Kill the loop after 5 iterations
-			if Iteration==5: 
-				print ("Finished running 5 iterations")
+                        
+			#Kill the loop after 10 iterations
+			if Iteration==10:
+				print ("Finished running 10 iterations")
 				print ("Killing the infinite loop to save our planet")
+				outfile.close()
 				exit(1)
+		outfile.close()
+
+
+
+
 	def ComputeAverage(self,Parameter,nStart,nStop):
 		if Parameter=="Q":
 			infile=open(sorted(glob.glob("%d-procs_case/QHist*.dat.%d"%(CPUs,nStop)))[-1],'r')
@@ -289,11 +307,13 @@ class AorticSimulations():
 		solver_file.write("\n")
 		solver_file.write("RCR Values From File: True\n")
 		solver_file.write("\n")
-		solver_file.write("Deformable Wall: True\n")
-		solver_file.write("Variable Wall Thickness and Young Mod: True\n")
-		solver_file.write("Density of Vessel Wall: 1\n")
-		solver_file.write("Poisson Ratio of Vessel Wall: 0.5\n")
-		solver_file.write("Shear Constant of Vessel Wall: 0.833333\n")
+		if self.tag=="FSI":
+			solver_file.write("Deformable Wall: True\n")
+			solver_file.write("Variable Wall Thickness and Young Mod: True\n")
+			solver_file.write("Density of Vessel Wall: 1\n")
+			solver_file.write("Poisson Ratio of Vessel Wall: 0.5\n")
+			solver_file.write("Shear Constant of Vessel Wall: 0.833333\n")
+		
 		solver_file.write("Pressure Coupling: Implicit\n")
 		solver_file.write("Number of Coupled Surfaces: %d\n"%(len(self.CapNames)))
 		solver_file.write("\n")
@@ -312,13 +332,19 @@ class AorticSimulations():
 		solver_file.write("Maximum Number of Iterations for svLS Continuity Loop: 1000\n")"""
 
 	def WritePreSolveFile(self):
-		svpre_file = open('AortaFSI.svpre','w')
+		svpre_file = open('Aorta.svpre','w')
 		svpre_file.write('mesh_and_adjncy_vtu mesh-complete/mesh-complete.mesh.vtu\n')
- 
+                #Write the deformable wall name
+		if self.tag=="FSI":
+			svpre_file.write("deformable_wall_vtp mesh-complete/walls_combined.vtp\n")
+			svpre_file.write("fix_free_edge_nodes_vtp mesh-complete/walls_combined.vtp\n")
+
+
 		#Set Surface Id
 		svpre_file.write('set_surface_id_vtp mesh-complete/mesh-complete.exterior.vtp 1\n')
 		for i in range(len(self.CapNames)):
 			svpre_file.write('set_surface_id_vtp %s %d\n'%(self.CapNames[i],i+2))
+		svpre_file.write('set_surface_id_vtp ./mesh-complete/mesh-surfaces/inflow.vtp %d\n'%(i+3))
 		
 		#Write fluid paramters
 		svpre_file.write("fluid_density 1.06\n")
@@ -340,41 +366,43 @@ class AorticSimulations():
 		for CapName_ in self.CapNames:
 			svpre_file.write("pressure_vtp %s 0\n"%CapName_)
 		
-		#Write the deformable wall name
-		svpre_file.write("deformable_wall_vtp mesh-complete/walls_combined.vtp\n")
+		if self.tag=="FSI":
+			#Set the surface thickness
+			Thickness=self.GetWallThickness()	
+			for CapName_ in self.CapNames:	
+				svpre_file.write("set_surface_thickness_vtp %s %.08f\n"%(CapName_,Thickness[CapName_]))
 
-		#Set the surface thickness
-		Thickness=self.GetWallThickness()	
-		for CapName_ in self.CapNames:	
-			svpre_file.write("set_surface_thickness_vtp %s %.08f\n"%(CapName_,Thickness[CapName_]))
-		#Write the WallThickness for the inlet
-		InflowCap="mesh-complete/mesh-surfaces/inflow.vtp"
-		InflowArea=self.GetSurfaceArea(InflowCap)
-		InflowThickness=0.1*np.sqrt(InflowArea/np.pi)
-		svpre_file.write("set_surface_thickness_vtp %s %.08f\n"%(InflowCap,InflowThickness))
+			#Write the WallThickness for the inlet
+			InflowCap="mesh-complete/mesh-surfaces/inflow.vtp"
+			InflowArea=self.GetSurfaceArea(InflowCap)
+			InflowThickness=0.1*np.sqrt(InflowArea/np.pi)
+			svpre_file.write("set_surface_thickness_vtp %s %.08f\n"%(InflowCap,InflowThickness))
 		
-		#Solve for Wall Thickness using Lapacian
-		svpre_file.write("solve_varwall_thickness\n")		
+			#Solve for Wall Thickness using Lapacian
+			svpre_file.write("solve_varwall_thickness\n")		
 
 
-		#Set the surface elastic modulus
-		for CapName_ in self.CapNames:
-			if CapName_.find("aorta")>=0:
-				svpre_file.write("set_surface_E_vtp %s %.05f\n"%(CapName_,self.E_Aorta))
-			else:
-				svpre_file.write("set_surface_E_vtp %s %.05f\n"%(CapName_,self.E_AorticBranches))
+			#Set the surface elastic modulus
+			for CapName_ in self.CapNames:
+				if CapName_.find("aorta")>=0:
+					svpre_file.write("set_surface_E_vtp %s %.05f\n"%(CapName_,self.E_Aorta))
+				else:
+					svpre_file.write("set_surface_E_vtp %s %.05f\n"%(CapName_,self.E_AorticBranches))
 			
-		#Solve for Elastic Modulus
-		svpre_file.write("solve_varwall_E\n")	
+			#Solve for Elastic Modulus
+			svpre_file.write("solve_varwall_E\n")	
 			
 			
-		#Write other stuff to do
-		svpre_file.write("varwallprop_write_vtp varwallprop.vtp\n")
-		svpre_file.write("deformable_nu 0.5\n")
-		svpre_file.write("deformable_kcons 0.833333\n")
-		svpre_file.write("deformable_pressure %.05f\n"%self.Pao_mean)
-		svpre_file.write("deformable_solve_varwall_displacements\n")
-		svpre_file.write("wall_displacements_write_vtp displacement.vtp\n")
+			#Write other stuff to do
+			svpre_file.write("varwallprop_write_vtp varwallprop.vtp\n")
+			svpre_file.write("deformable_nu 0.5\n")
+			svpre_file.write("deformable_kcons 0.833333\n")
+			svpre_file.write("deformable_pressure %.05f\n"%self.Pao_mean)
+			svpre_file.write("deformable_solve_varwall_displacements\n")
+			svpre_file.write("wall_displacements_write_vtp displacement.vtp\n")
+		else:
+			svpre_file.write("noslip_vtp mesh-complete/walls_combined.vtp\n")
+
 		svpre_file.write("write_geombc geombc.dat.1\n")
 		svpre_file.write("write_restart restart.0.1\n") 
   
