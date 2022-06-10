@@ -8,7 +8,7 @@ import numpy as np
 import math
 from scipy.optimize import minimize
 pConv = 1333.34
-USER_EMAIL_ADDRESS="owaiskhan@ryerson.ca"
+USER_EMAIL_ADDRESS=""
 PRE_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpre.exe'
 SOLVER_PATH ='/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe'
 POST_SOLVER_PATH = '/home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svpost.exe'
@@ -25,7 +25,7 @@ class AorticSimulations():
 		self.Pao_max=43.5 #maximum systolic pressure (mmHg)
 		self.tag="Rigid"	
 		#Solver paramters
-		self.Ntimesteps=1000
+		self.Ntimesteps=2000
 		self.Ncycles=2
 		self.Nrestart=50
 
