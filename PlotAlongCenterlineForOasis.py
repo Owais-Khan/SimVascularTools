@@ -14,6 +14,10 @@ class PlotAlongCenterline():
 		
 
 	def Main(self):
+
+		if self.Args.OutputFolder is None:
+			self.Args.OutputFolder="TemporalAvg"
+			os.system("mkdir %s"%self.Args.OutputFolder)
 		#Compute the centerlines
 		CL_FileName=self.Args.OutputFolder+"/"+self.Args.InputSurface.replace(".vtp","_cl.vtp").split("/")[-1]
 		InputFiles=sorted(glob(self.Args.InputFolder+"/*.vtu"))

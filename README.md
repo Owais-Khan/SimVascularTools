@@ -99,6 +99,11 @@ foo@bar:~$ python ~/Path/To/SimVascularRools/ComputeTemporalAverageForOasis.py -
 ```
 This script also contains a frequency analysis which will compute the SPI and OSI. This command will output both a surface and volumetric vtu file containing each parameter in an array. These files now can be used to plot the parameters across the centerline in the next step.
 
+---
 ### 2.5 Plot Along Centerline
+Using the vtu files containing the temporal average, you can plot these parameters across the centerline to obtain a hemodynamic analysis. This script will compute the average and maximum parameter values of each cross section created along the centerline of the model, and write the results into a single text file. To use this script, run the following command:
 
+```console
+foo@bar:~$ python ~/Path/To/SimVascularTools/PlotAlongCenterlineForOasis.py -InputFolder /path/to/ComputeTemporalAvgResults -InputSurface /path/to/surface/file
+```
 
