@@ -272,4 +272,33 @@ def ComputeArea(Surface):
 	masser.Update()
 	return masser.GetSurfaceArea()
 
+def ConvertPointsToLine(PointsArray):
+        # Create a vtkPoints object and store the points in it
+        Points = vtk.vtkPoints()
+        for Point_ in PointsArray:
+                Points.InsertNextPoint(Point_)
+
+        #Create a Polyline
+        polyLine = vtk.vtkPolyLine()
+        polyLine.GetPointIds().SetNumberOfIds(len(PointsArray))
+
+        for i in range(0, len(PointsArray)):
+                polyLine.GetPointIds().SetId(i, i)
+
+
+        # Create a cell array to store the lines in and add the lines to it
+        cells = vtk.vtkCellArray()
+        cells.InsertNextCell(polyLine)
+
+        # Create a polydata to store everything in
+        polyData = vtk.vtkPolyData()
+
+        # Add the points to the dataset
+        polyData.SetPoints(Points)
+
+        # Add the lines to the dataset
+        polyData.SetLines(cells)
+
+        return polyData
+
 
