@@ -95,7 +95,7 @@ foo@bar:~$ python ~/Path/To/SimVascularTools/ComputeTemporalAverage.py -InputFol
 This will output a single volumetric vtu file containing the velocity magnitude array. If you are also using parameters computed from VaMPy, you must use the following command:
 
 ```console
-foo@bar:~$ python ~/Path/To/SimVascularRools/ComputeTemporalAverageForOasis.py -InputFolder /path/to/simulation/results/folder -ProcessedResults /path/to/VaMPy/results -OutputFolder ComputeTemporalAvgResults
+foo@bar:~$ python ~/Path/To/SimVascularRools/ComputeTemporalAverageForOasis.py -InputFolder /path/to/simulation/results/folder -ProcessedResults /path/to/VaMPy/results -OutputFolder ComputeTemporalAvgResults -Period period_of_cardiac_cycle
 ```
 This script also contains a frequency analysis which will compute the SPI and OSI. This command will output both a surface and volumetric vtu file containing each parameter in an array. These files now can be used to plot the parameters across the centerline in the next step.
 
