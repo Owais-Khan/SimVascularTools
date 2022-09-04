@@ -83,11 +83,11 @@ class ComputeTemporalAverage():
 		TKE=np.zeros(NPoints)
 
 		for i in range(NPoints):
-                        SPI[i]=self.filter_SPI(VelocityMag[:,i])
-                        U_tke_=np.mean(np.power(self.filter_TKE(VelocityX[:,i]),2))
-                        V_tke_=np.mean(np.power(self.filter_TKE(VelocityY[:,i]),2))
-                        W_tke_=np.mean(np.power(self.filter_TKE(VelocityZ[:,i]),2))
-                        TKE[i]=0.5*(U_tke_+V_tke_+W_tke_)
+			SPI[i]=self.filter_SPI(VelocityMag[:,i])     
+			U_tke_=np.mean(np.power(self.filter_TKE(VelocityX[:,i]),2))
+			V_tke_=np.mean(np.power(self.filter_TKE(VelocityY[:,i]),2))
+			W_tke_=np.mean(np.power(self.filter_TKE(VelocityZ[:,i]),2))
+			TKE[i]=0.5*(U_tke_+V_tke_+W_tke_)
 
                 #Add a new array to the file
 		VelocityMagVTK=numpy_to_vtk(VelocityMag_)
@@ -150,7 +150,7 @@ if __name__=="__main__":
 
 	parser.add_argument('-ProcessedResults', '--ProcessedResults', type=str, required=True, dest="ProcessedResults", help="The input folder that contains all of the post processed volumetric and surface results file.")
         
-	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=True, dest="OutputFolder", help="The output folder to store the time-averaged file in.")
+	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=False dest="OutputFolder", help="The output folder to store the time-averaged file in.")
 	parser.add_argument('-Period', '--Period', type=float, required=True, dest="Period",help="The duration of the cardiac cycle in seconds.")
 	parser.add_argument('-CutoffFrequency', '--CutoffFrequency', type=int, required=False, default=25, dest="CutoffFrequency",help="The cut-off frequency to compute frequency-based biomarkers.")
 	
