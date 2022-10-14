@@ -83,6 +83,13 @@ foo@bar:~$ /home/k/khanmu11/khanmu11/Softwares/svSolver/BuildWithMake/Bin/svpost
 ```
 Note that `mkdir results` will create an empty directory to store the post-processed results. `debugjob` will submit an interactive job on SciNet to run the postsolve. `svpost.exe` command will loop through 12000 to 16000 time step (i.e. 4th cardiac cycle) in increments of 80 time steps. This will generate 200 .vtu (volume) and 200.vtp (surface) files that we can use for computing various hemodynamic quantities. You can also download these files locally and visualize using Paraview.
 
+### 2.3.1 Accelerating Post-Processing for Visualization
+If you are trying to process results with a greater amount of time steps, you can run the following script to alter the Niagara Post Solver script to run through all of the batchfiles in serial as one node on Niagara may not suffice all files in one execution:
+
+```console
+foo@bar:~$ python Niagara_PostProcessing_Serial.py -InputFolder 200-procs_case/ -Start start_timestep -End end_timestep -Increment increment
+foo@bar:~$ sbatch Niagara_PostSolver 
+``` 
 ---
 ### 2.4 Computing the Temporal Average of the Results
 Using the results of the simulation, you can compute the temporal average of various parameters and store them into a .vtu file. If you are only using the results outputted from the SimVascular simulation, use the following command:
