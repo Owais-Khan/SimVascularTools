@@ -18,52 +18,48 @@ class ExtractProbePoints():
 
 		#Read the Probe Points
 		ProbePoints=[]
+		Radius=[]
 		ProbePointFile=open(self.Args.InputFile,'r')
 		for Line in ProbePointFile:
 			line=Line.split()
 			ProbePoints.append([float(line[0]),float(line[1]),float(line[2])])
+			Radius.append(float(line[1]))
 		ProbePointFile.close() 
 		
 		#Get the Probe Points
-		if self.Args.Radius!=0:
-			#Read the first velocity file
-			VelocityFile0=ReadVTUFile(FileNames[0])
+		#Read the first velocity file
+		VelocityFile0=ReadVTUFile(FileNames[0])
 			
-			#Get the Coordinates
-			NPoints=VelocityFile0.GetNumberOfPoints()
-			MeshPoints=np.array([VelocityFile0.GetPoint(i) for i in range(NPoints)])
+		#Get the Coordinates
+		NPoints=VelocityFile0.GetNumberOfPoints()
+		MeshPoints=np.array([VelocityFile0.GetPoint(i) for i in range(NPoints)])
 
-			#Create a dictionary to store probe data
-			ProbeData={}
-			VelocityProbeData={}
-			for i in range(len(ProbePoints)): #Loop over all of the probe points
-				#For each probe point, find the closest nodes that fall within radius
-				ProbeData[i]=[]
-				ProbeData[i]={"Points":[],"PointIds":[],"Distance":[]}
-				VelocityProbeData[i]=[]
+		#Create a dictionary to store probe data
+		ProbeData={}
+		VelocityProbeData={}
+		for i in range(len(ProbePoints)): #Loop over all of the probe points
+			#For each probe point, find the closest nodes that fall within radius
+			ProbeData[i]=[]
+			ProbeData[i]={"Points":[],"PointIds":[],"Distance":[]}
+			VelocityProbeData[i]=[]
 				
-				#Compute the distance from probe point
-				Distance_=np.sum((MeshPoints - ProbePoints[i])**2, axis=1)
-				SortArray=np.argsort(Distance_)
+			#Compute the distance from probe point
+			Distance_=np.sum((MeshPoints - ProbePoints[i])**2, axis=1)
+			SortArray=np.argsort(Distance_)
 				
-				#Find the closest point to the probe point within give radius
-				for j in range(len(SortArray)):
-					if Distance_[SortArray[j]]<self.Args.Radius:
-						ProbeData[i]["Points"].append(MeshPoints[SortArray[j]])
-						ProbeData[i]["PointIds"].append(SortArray[j])
-						ProbeData[i]["Distance"].append(Distance_[SortArray[j]])
-					else:
-						break
+			#Find the closest point to the probe point within give radius
+			for j in range(len(SortArray)):
+				if Distance_[SortArray[j]]<Radius[i]:
+					ProbeData[i]["Points"].append(MeshPoints[SortArray[j]])
+					ProbeData[i]["PointIds"].append(SortArray[j])
+					ProbeData[i]["Distance"].append(Distance_[SortArray[j]])
+				else:
+					break
 
-				#Save the Dictionary to the output folder
-				print ("Saving Probe Coords, Ids and Distances in %s\n"%(self.Args.OutputFolder))
-				np.save("%s/ProbePointLocations.npy"%(self.Args.OutputFolder),ProbeData)
+			#Save the Dictionary to the output folder
+		print ("Saving Probe Coords, Ids and Distances in %s\n"%(self.Args.OutputFolder))
+		np.save("%s/ProbePointLocations.npy"%(self.Args.OutputFolder),ProbeData)
 
-		else:
-			print ("The Radius around probe point is not defined")
-			print ("Exiting ...")
-	
-					
 		#Loop over the velocity files and extract the data around each probe point
 		for FileName in FileNames:
 			print ("--- Looping over: %s"%FileName)
@@ -92,13 +88,6 @@ class ExtractProbePoints():
 
 		
 
-				
-			
-			
-				
-
-
-
 
 if __name__=="__main__":
         #Description
@@ -107,11 +96,8 @@ if __name__=="__main__":
         #Provide a path to the Magnitude Images
 	parser.add_argument('-InputFolder', '--InputFolder', type=str, required=True, dest="InputFolder",help="This folder contains the velocity files in vtu format.")
 
-	parser.add_argument('-InputFile', '--InputFile', type=str, required=True, dest="InputFile",help="The input file contains a column list of x y z coordinates for which data is needed.")
+	parser.add_argument('-InputFile', '--InputFile', type=str, required=True, dest="InputFile",help="The input file contains a column list of x y z R (coordinates and Radius) for which data is needed.")
 	
-	parser.add_argument('-Radius', '--Radius', type=float, required=False, dest="Radius",default=0, help="The radius around the probe point for which probe points are also needed")
-
-        #The number of fourier modes
 	parser.add_argument('-OutputFolder', '--OutputFolder', type=int, required=False, dest="OutputFolder",help="The output folder to store the data")
 
 	#Put all the arguments together
