@@ -28,7 +28,7 @@ class Aortic_Simulations_Fine():
 				line_=float(LINE.split()[-1])
 				outfile.write("Time Step Size: %.08f\n"%(line_/2.))
 			elif LINE.find("Number of Timesteps between Restarts")>=0:
-				outfile.write("Number of Timesteps between Restarts: %d\n"%int((Nsteps/800))
+				outfile.write("Number of Timesteps between Restarts: %d\n"%int((Nsteps/1600))
 			else: outfile.write(LINE)
 		outfile.close()
 		infile.close()
