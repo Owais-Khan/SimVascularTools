@@ -113,4 +113,15 @@ Using the vtu files containing the temporal average, you can plot these paramete
 ```console
 foo@bar:~$ python ~/Path/To/SimVascularTools/PlotAlongCenterlineForOasis.py -InputFolder /path/to/ComputeTemporalAvgResults -InputSurface /path/to/surface/file
 ```
+---
+### 2.6 Plotting Frequency Maps from Probe Velocity
+These script will compute frequency maps by extracting velocity data from SimVascular vtu files. There are two steps:
+Step 1) Extract probe points from velocity (in vtu format).
+Step 2) Compute power spectral density (PSD) as a function of frequency.
+
+Step1: The following script will loop over all of the vtu files in a folder and extract velocity around a probe points (taken fron an input probe file). You need a file that contains a list of probe points and a radius of capture around the probe point (e.g, x1 y1 z1 R1). 
+```console
+foo@bar:~$ python ~/Path/To/SimVascularTools/ExtractProbePoints.py -InputFolder /path/to/folder/with/vtu/files -InputFile /path/to/file/with/probes
+```
+
 
