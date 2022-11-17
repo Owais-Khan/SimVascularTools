@@ -60,7 +60,13 @@ class ExtractProbePoints():
 		print ("Saving Probe Coords, Ids and Distances in %s\n"%(self.Args.OutputFolder))
 		np.save("%s/ProbePointLocations.npy"%(self.Args.OutputFolder),ProbeData)
 
+		#Create an array to store velocity data
+		for i in range(len(ProbePoints)):
+			VelocityProbeData[i]=np.zeros(shape=(len(ProbeData[i]["Points"]),len(FileNames)))
+
+	
 		#Loop over the velocity files and extract the data around each probe point
+		counter=0
 		for FileName in FileNames:
 			print ("--- Looping over: %s"%FileName)
 			#Read the data in the file
@@ -77,10 +83,13 @@ class ExtractProbePoints():
 					Vx_=Velocity_.GetPointData().GetArray("velocity").GetValue(Id_*3)
 					Vy_=Velocity_.GetPointData().GetArray("velocity").GetValue(Id_*3+1)
 					Vz_=Velocity_.GetPointData().GetArray("velocity").GetValue(Id_*3+2)
+				
+					#Compute the velocity magnitude
+					Vmag=np.sqrt(Vx_**2+Vy_**2+Vz_**2)
 					
 					#Store the velocity data in Dictionary
-					VelocityProbeData[i].append([Vx_,Vy_,Vz_])				
-
+					VelocityProbeData[i][j,counter]=Vmag	
+			counter+=1
 
 		#Store the Velocity Data
 		print ("Saving Velocity data to %s\n"%(self.Args.OutputFolder))
