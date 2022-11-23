@@ -15,17 +15,23 @@ class ExtractProbePoints():
 	def Main(self):
 		#Get the list of files
 		FileNames=sorted(glob(self.Args.InputFolder+"/all_results.vtu_*.vtu"))
+		print ("--- The number of files detected are: %d"%(len(FileNames)))
 
 		#Read the Probe Points
 		ProbePoints=[]
 		Radius=[]
+		print ("--- Reading Probe Point File: %s"%self.Args.InputFile)
 		ProbePointFile=open(self.Args.InputFile,'r')
+		counter=0
 		for Line in ProbePointFile:
 			line=Line.split()
 			ProbePoints.append([float(line[0]),float(line[1]),float(line[2])])
-			Radius.append(float(line[1]))
+			Radius.append(float(line[-1]))
+			print ("------ Probe Coordinate and Radius %.05f %.05f %.05f %.05f: "%(ProbePoints[counter][0],ProbePoints[counter][1],ProbePoints[counter][2],Radius[counter]))
+			counter+=1
 		ProbePointFile.close() 
-		
+
+	
 		#Get the Probe Points
 		#Read the first velocity file
 		VelocityFile0=ReadVTUFile(FileNames[0])
@@ -37,9 +43,11 @@ class ExtractProbePoints():
 		#Create a dictionary to store probe data
 		ProbeData={}
 		VelocityProbeData={}
+		
+		print ("\n")
+		print ("--- Reading Probe Sphere points, distances and point ids")
 		for i in range(len(ProbePoints)): #Loop over all of the probe points
 			#For each probe point, find the closest nodes that fall within radius
-			ProbeData[i]=[]
 			ProbeData[i]={"Points":[],"PointIds":[],"Distance":[]}
 			VelocityProbeData[i]=[]
 				
@@ -56,8 +64,12 @@ class ExtractProbePoints():
 				else:
 					break
 
+			print ("------ The number of points with Probe Sphere %d are %d"%(i,len(ProbeData[i]["Points"])))
+
+
 			#Save the Dictionary to the output folder
-		print ("Saving Probe Coords, Ids and Distances in %s\n"%(self.Args.OutputFolder))
+		print ("\n")
+		print ("--- Saving Probe Coords, Ids and Distances in %s\n"%(self.Args.OutputFolder))
 		np.save("%s/ProbePointLocations.npy"%(self.Args.OutputFolder),ProbeData)
 
 		#Create an array to store velocity data
