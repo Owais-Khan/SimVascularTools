@@ -105,7 +105,7 @@ class ExtractProbePoints():
 
 		#Store the Velocity Data
 		print ("Saving Velocity data to %s\n"%(self.Args.OutputFolder))
-		np.save("%s/VelocityData.npy"%(self.Args.OutputFolder),ProbeData)
+		np.save("%s/VelocityData.npy"%(self.Args.OutputFolder),VelocityProbeData)
 
 		
 
