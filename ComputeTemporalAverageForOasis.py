@@ -12,8 +12,7 @@ class ComputeTemporalAverage():
 
 	def Main(self):
 		#Read all of the file name
-		InputFiles=sorted(glob(self.Args.InputFolder+"/all_results.vtu*.vtu"))
-		InputResults=sorted(glob(self.Args.ProcessedResults+"/*.vtu"))
+		InputFiles=sorted(glob(self.Args.InputFolder+"/all_results.vtu*.vtu"))[::500]
 		
 		os.system("mkdir %s"%self.Args.OutputFolder)
  
@@ -21,41 +20,12 @@ class ComputeTemporalAverage():
 		File1=ReadVTUFile(InputFiles[0])
 		NPoints=File1.GetNumberOfPoints()
 
-		#Initialize file for surface parameters
-		for file in InputResults:
-			File2=ReadVTUFile(file)
-			
-			if File2.GetNumberOfPoints()<NPoints:
-				File2=ReadVTUFile(file)
-				break
-
+		
 		VelocityX=np.zeros(shape=(len(InputFiles),NPoints))
 		VelocityY=np.zeros(shape=(len(InputFiles),NPoints))
 		VelocityZ=np.zeros(shape=(len(InputFiles),NPoints))
 		VelocityMag=np.zeros(shape=(len(InputFiles),NPoints))
 		VelocityMag_=np.zeros(NPoints)
-		#Loop over processed results files
-		for file in InputResults:
-			File_=ReadVTUFile(file)
-			
-			if File_.GetPointData().GetArrayName(0) is None:
-				continue
-
-			else:   
-				dataset_name=File_.GetPointData().GetArrayName(0)
-				data=File_.GetPointData().GetArray(dataset_name)
-				print ("--- Looping over %s"%file)
-					
-                        	#Add to array
-				dataVTK=numpy_to_vtk(data)
-				name=file.split('/')[1]
-				name=name.split('0')[0]
-				dataVTK.SetName(name)
-
-				if data.GetNumberOfValues()<NPoints:
-					File2.GetPointData().AddArray(dataVTK)
-				else:
-					File1.GetPointData().AddArray(dataVTK) 
 
 		#Loop over SV result files
 		counter=0 #filename or timestep
@@ -67,7 +37,6 @@ class ComputeTemporalAverage():
 				VelocityX[counter,i]=VelocityFile_.GetPointData().GetArray("velocity").GetValue(i*3)	
 				VelocityY[counter,i]=VelocityFile_.GetPointData().GetArray("velocity").GetValue(i*3+1)	
 				VelocityZ[counter,i]=VelocityFile_.GetPointData().GetArray("velocity").GetValue(i*3+2)
-			
 				VelocityMag[counter,i]=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
 				VelocityMag_[i]+=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
 			counter+=1
@@ -113,11 +82,10 @@ class ComputeTemporalAverage():
 		File1.GetPointData().RemoveArray("vWSS")
 		File1.GetPointData().RemoveArray("timeDeriv")
 		File1.GetPointData().RemoveArray("average_speed")
-		#File1.GetPointData().RemoveArray("average_pressure")
+		File1.GetPointData().RemoveArray("average_pressure")
 		
 		#Write the vtu file
 		WriteVTUFile(self.Args.OutputFolder+"/TemporalVolumetricAveragedResults.vtu",File1)
-		WriteVTUFile(self.Args.OutputFolder+"/TemporalSurfaceAveragedResults.vtu",File2)	
 
 	def filter_TKE(self,U):
 		#For FKE
