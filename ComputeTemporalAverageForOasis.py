@@ -150,7 +150,7 @@ if __name__=="__main__":
 
 	parser.add_argument('-ProcessedResults', '--ProcessedResults', type=str, required=True, dest="ProcessedResults", help="The input folder that contains all of the post processed volumetric and surface results file.")
         
-	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=False, dest="OutputFolder", help="The output folder to store the time-averaged file in.")
+	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=True, dest="OutputFolder", help="The output folder to store the time-averaged file in.")
 	parser.add_argument('-Period', '--Period', type=float, required=True, dest="Period",help="The duration of the cardiac cycle in seconds.")
 	parser.add_argument('-CutoffFrequency', '--CutoffFrequency', type=int, required=False, default=25, dest="CutoffFrequency",help="The cut-off frequency to compute frequency-based biomarkers.")
 	
