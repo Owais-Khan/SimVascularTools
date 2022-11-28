@@ -11,11 +11,11 @@ class ComputeTemporalAverage():
 		self.Args=Args
 		if self.Args.OutputFolder is None:
 			self.Args.OutputFolder=self.Args.InputFolder+"../TemporalAvg"
-			os.system("mkdir %s"self.Args.OutputFolder)
+			os.system("mkdir %s"%self.Args.OutputFolder)
 
 	def Main(self):
 		#Read all of the file name
-		InputFiles1=sorted(glob(self.Args.InputFolder+"/all_results.vtu*.vtu")) #volumetric files
+		InputFiles1=sorted(glob(self.Args.InputFolder+"/all_results.vtu*.vtu")) #volumetric files 
 		InputFiles2=sorted(glob(self.Args.InputFolder+"/all_results.vtp*.vtp")) #surface files
 		
  
@@ -92,10 +92,13 @@ class ComputeTemporalAverage():
 			TKE[i]=0.5*(U_tke_+V_tke_+W_tke_)
 
 		print ("\n")
-		print ("--- Computing WSS (surface) SPI ...")
+		print ("--- Computing Surface SPI, WSS and OSI ...")
 		for i in range(NPoints2):
 			SPI_surface[i]=self.filter_SPI(WSSMag[:,i])
-			OSI[i]=0.5*(1-np.sqrt(np.mean(WSSX[:,i])**2+np.mean(WSSY[:,i])**2+np.mean(WSSZ[:,i])**2)/WSSMag_[i])	
+			if WSSMag_[i]==0.0: 
+				OSI[i]=0.0
+			else:
+				OSI[i]=0.5*(1-np.sqrt(np.mean(WSSX[:,i])**2+np.mean(WSSY[:,i])**2+np.mean(WSSZ[:,i])**2)/WSSMag_[i])	
 
 
                 #Add a new array to the Volumetric File
@@ -150,7 +153,7 @@ class ComputeTemporalAverage():
 		
 		#Write the vtu file
 		WriteVTUFile(self.Args.OutputFolder+"/TemporalVolumetricAveragedResults.vtu",File1)
-		WriteVTUFile(self.Args.OutputFolder+"/TemporalSurfaceAveragedResults.vtu",File1)
+		WriteVTPFile(self.Args.OutputFolder+"/TemporalSurfaceAveragedResults.vtp",File2)
 
 	def filter_TKE(self,U):
 		#For FKE
@@ -181,7 +184,7 @@ if __name__=="__main__":
 
 	parser.add_argument('-InputFolder', '--InputFolder', type=str, required=True, dest="InputFolder", help="The input folder that contains all of the results file, taged ass all_results.vtu.XXXXX.vtu")	
 
-	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=True, dest="OutputFolder", help="The output folder to store the time-averaged file in.")
+	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=False, dest="OutputFolder", help="The output folder to store the time-averaged file in.")
 	parser.add_argument('-Period', '--Period', type=float, required=True, dest="Period",help="The duration of the cardiac cycle in seconds.")
 	parser.add_argument('-CutoffFrequency', '--CutoffFrequency', type=int, required=False, default=25, dest="CutoffFrequency",help="The cut-off frequency to compute frequency-based biomarkers.")
 	
