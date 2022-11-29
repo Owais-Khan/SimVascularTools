@@ -33,6 +33,7 @@ class ComputeTemporalAverage():
 		VelocityZ=np.zeros(shape=(len(InputFiles1),NPoints1))
 		VelocityMag=np.zeros(shape=(len(InputFiles1),NPoints1))
 		VelocityMag_=np.zeros(NPoints1)
+		Pressure_=np.zeros(NPoints1)
 
 		#For surface data
 		WSSX=np.zeros(shape=(len(InputFiles2),NPoints2))
@@ -56,6 +57,7 @@ class ComputeTemporalAverage():
 				VelocityZ[counter,i]=VelocityFile_.GetPointData().GetArray("velocity").GetValue(i*3+2)
 				VelocityMag[counter,i]=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
 				VelocityMag_[i]+=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
+				Pressure_[i]+=VelocityFile_.GetPointData().GetArray("pressure").GetValue(i)
 			                        
 			print ("------ Looping over %s"%InputFiles2[j])
 			#Loop over all of the points
@@ -75,6 +77,7 @@ class ComputeTemporalAverage():
 		self.W = fftfreq(N_ts, d=time[1]-time[0])
 		VelocityMag_=VelocityMag_*(1./counter)
 		WSSMag_=WSSMag_*(1./counter)
+		Pressure_=Pressure_*(1./counter)
 
 		#Compute Frequency Analysis
 		SPI=np.zeros(NPoints1)
@@ -103,8 +106,12 @@ class ComputeTemporalAverage():
 
                 #Add a new array to the Volumetric File
 		VelocityMagVTK=numpy_to_vtk(VelocityMag_)
-		VelocityMagVTK.SetName("velocity_mag_average")
+		VelocityMagVTK.SetName("Velocity")
 		File1.GetPointData().AddArray(VelocityMagVTK)
+
+		PressureVTK=numpy_to_vtk(Pressure_)
+		PressureVTK.SetName("Pressure")
+		File1.GetPointData().AddArray(PressureVTK)
 
 		SPI_VTK=numpy_to_vtk(SPI)
 		SPI_VTK.SetName("SPI")
@@ -116,7 +123,7 @@ class ComputeTemporalAverage():
 
 		#Add new array to the Surface File
 		WSSMagVTK=numpy_to_vtk(WSSMag_)
-		WSSMagVTK.SetName("WSS_mag_average")
+		WSSMagVTK.SetName("WSS")
 		File2.GetPointData().AddArray(WSSMagVTK)
 
 		SPI_surface_VTK=numpy_to_vtk(SPI_surface)
