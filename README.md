@@ -124,4 +124,13 @@ Step1: The following script will loop over all of the vtu files in a folder and 
 foo@bar:~$ python ~/Path/To/SimVascularTools/ExtractProbePoints.py -InputFolder /path/to/folder/with/vtu/files -InputFile /path/to/file/with/probes
 ```
 
+## SimVascular Useful Scripts
+### Project Results to Another (Coarser) Mesh
+This script will take the results produced by SimVascular and project them onto another mesh (e.g., a coarse mesh for easier visualization). The script takes the results folder containing all of the .vtu files and a new mesh as an input. All of the projected velocity files are stored in an output folder with tag "_coarse".
 
+```console
+foo@bar:~$ python ProjectToNewMesh.py -InputFolder /path/to/folder/with/vtu/files -InputFile /path/to/mesh-complete.vtu/file
+```
+Optional Arguments:
+- ```-OutputFolder```: Name of the output folder. If None, a new folder with "_coarse" tag will be created in the same directory as the input folder.
+  
