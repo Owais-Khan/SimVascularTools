@@ -14,6 +14,9 @@ class ProjectToNewMesh():
 			self.Args.OutputFolder=self.Args.InputFolder.replace(self.Args.InputFolder.split("/")[-1],self.Args.InputFolder.split("/")[-1]+"_coarse/")
 			os.system("mkdir %s"%self.Args.OutputFolder)
 
+		else:
+			osy.system("mkdir %s/"%self.Args.OutputFolder)
+
 	def Main(self):
 		#Read all of the file name
 		InputFiles=sorted(glob(self.Args.InputFolder+"/all_results.vtu*.vtu")) #volumetric files 
