@@ -133,4 +133,4 @@ foo@bar:~$ python ProjectToNewMesh.py -InputFolder /path/to/folder/with/vtu/file
 ```
 Optional Arguments:
 - ```-OutputFolder```: Name of the output folder. If None, a new folder with "_coarse" tag will be created in the same directory as the input folder.
-  
+- ```Skip```: Skip files in the input folder (e.g., 1= include all files, 2 means skip every other file etc.) 
