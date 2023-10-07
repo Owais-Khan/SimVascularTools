@@ -15,7 +15,7 @@ class ProjectToNewMesh():
 			os.system("mkdir %s"%self.Args.OutputFolder)
 
 		else:
-			osy.system("mkdir %s/"%self.Args.OutputFolder)
+			os.system("mkdir %s/"%self.Args.OutputFolder)
 
 	def Main(self):
 		#Read all of the file name
@@ -27,7 +27,7 @@ class ProjectToNewMesh():
 		MeshVolume=ReadVTUFile(self.Args.InputFileName)
 		print ("--- Read the Mesh File: %s"%self.Args.InputFileName)
 
-		#Extract the Surface Mesh
+		#Extract the Surface Mesh from Coarse Mesh
 		print ("--- Extracting a Surface Mesh")
 		MeshSurface=vtk.vtkDataSetSurfaceFilter()
 		MeshSurface.PassThroughPointIdsOn() #creates a new point array = "vtkOriginalPointIds"
@@ -41,19 +41,27 @@ class ProjectToNewMesh():
 		NArrays=InputFile1.GetPointData().GetNumberOfArrays()
 		ArrayNames=[InputFile1.GetPointData().GetArrayName(i) for i in range(NArrays)]
 
+		#Extracting Surface Mesh for Velocity File
+		VelocitySurface=vtk.vtkDataSetSurfaceFilter()
+		VelocitySurface.PassThroughPointIdsOn() 
+		VelocitySurface.SetInputData(InputFile1)
+		VelocitySurface.Update()
+		VelocitySurface=VelocitySurface.GetOutput()
+
+
 		#Get the IDs in the Velocity File that correspond to the Mesh File only for the wall
 		print ("--- Extracting the Closest Points only for the Surface Mesh")
 		ClosestPointIds=[]
 		PointLocator_=vtk.vtkPointLocator()
-		PointLocator_.SetDataSet(InputFile1)
+		PointLocator_.SetDataSet(VelocitySurface)
 		PointLocator_.BuildLocator()
 		for i in range(MeshSurface.GetNumberOfPoints()):
-			ClosestPointIds.append(PointLocator_.FindClosestPoint(MeshSurface.GetPoint(i)))
+			Id_=PointLocator_.FindClosestPoint(MeshSurface.GetPoint(i))
+			ClosestPointIds.append(VelocitySurface.GetPointData().GetArray("vtkOriginalPointIds").GetValue(Id_))
 
 		#Create a Probe Filter
 		ProbeFilter_=vtk.vtkProbeFilter()
 		ProbeFilter_.SetInputData(MeshVolume)
-		
 	
 		#Loop over all of the time series
 		for InputFileName_ in InputFiles:
