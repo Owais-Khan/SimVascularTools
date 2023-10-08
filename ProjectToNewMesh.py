@@ -16,6 +16,7 @@ class ProjectToNewMesh():
 
 		else:
 			os.system("mkdir %s/"%self.Args.OutputFolder)
+			self.Args.OutputFolder=self.Args.OutputFolder+"/"
 
 	def Main(self):
 		#Read all of the file name
