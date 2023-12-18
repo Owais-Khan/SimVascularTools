@@ -48,6 +48,8 @@ class ProjectToNewMesh():
 		VelocitySurface.SetInputData(InputFile1)
 		VelocitySurface.Update()
 		VelocitySurface=VelocitySurface.GetOutput()
+		WriteVTPFile("VelocitySurface.vtp",VelocitySurface)
+		exit(1)
 
 
 		#Get the IDs in the Velocity File that correspond to the Mesh File only for the wall
@@ -77,8 +79,7 @@ class ProjectToNewMesh():
 				Id_=MeshSurface.GetPointData().GetArray("vtkOriginalPointIds").GetValue(i)
 				for ArrayName_ in ArrayNames:
 					Value_=InputFile_.GetPointData().GetArray(ArrayName_).GetValue(ClosestPointIds[i])
-					Data_.GetPointData().GetArray(ArrayName_).SetValue(Id_,Value_)
-
+					Data_.GetPointData().GetArray(ArrayName_).SetValue(Id_,0)#Value_)
 					
 			#Write the Output File
 			WriteVTUFile(self.Args.OutputFolder+InputFileName_.split("/")[-1],Data_)

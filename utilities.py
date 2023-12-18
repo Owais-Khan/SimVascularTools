@@ -1,5 +1,5 @@
 import vtk
-from vmtk import vtkvmtk, vmtkscripts
+#from vmtk import vtkvmtk, vmtkscripts
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 import numpy as np
 from glob import glob

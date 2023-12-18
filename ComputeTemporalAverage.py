@@ -164,12 +164,11 @@ class ComputeTemporalAverage():
 
 	def filter_TKE(self,U):
 		#For FKE
-		U_fft       = fft(U)
+		U_fft       = fft(U-np.mean(U))
 		U_cut_fft   = U_fft.copy()
 		U_cut_fft[(self.W<self.Args.CutoffFrequency)]=0
 		U_ifft      =ifft(U_cut_fft)
 		print (U_ifft)
-		exit(1)
 		return U_ifft
 
 	def filter_SPI(self,U):
