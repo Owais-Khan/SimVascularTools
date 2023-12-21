@@ -1,3 +1,13 @@
+#This script is written by Dr. Owais Khan on December 21, 2023
+#This script does the following:
+#	- Compute POD Eigen-spectra from SimVascular's results of simulated (coarse) velocity
+#	- Compute POD Eigen-spectra from SimVascular's results of simulated (fine) velocity (optional)
+# 	- Compute L2norm between coarse and fine velocity (optional)
+#	- Compute L2norm along the centerline between coarse and fine velocity field (optional)
+#	- Compute POD eigen-spectra along the centerline for coarse velocity (optional)
+#	- Compute POD eigen-spectra along the centerline for fine velocity (optional)
+
+
 import sys
 import os
 from glob import glob
@@ -6,21 +16,33 @@ import numpy as np
 import vtk
 import argparse
 from utilities import *
+import re
 import modred
 
-class PlotAlongCenterline():
+class DataAnalysis():
 	def __init__(self,Args):
 		self.Args=Args
+		if self.Args.OutputFolder is None:
+			self.Args.OutputFolder=self.Args.InputFolder+"/../DataAnalysis/"
+			os.system("mkdir %s"%self.Args.OutputFolder)
 
 	def Main(self):
                 #Read the Centerline
-		if self.Args.CenterlineFile is not None:
-			Centerline=ReadVTPFile(self.Args.CenterlinesFile)
-			CLCoords=np.array(Centerline.GetPoints(i) for i in range(Centerline.GetNumberOfPoints()))
-		
+		if self.Args.CenterlineFile:
+			print ("--- Reading Centerline File: %s"%self.Args.CenterlineFile)
+			Centerline=ReadVTPFile(self.Args.CenterlineFile)
+			CLCoords=np.array([Centerline.GetPoint(i) for i in range(Centerline.GetNumberOfPoints())])
+			
+			#Create a Distance Array as well
+			CL_Length=[0]
+			for i in range(1,len(CLCoords)):
+				Distance_=CL_Length[i-1]+((CLCoords[i-1][0]-CLCoords[i][0])**2+(CLCoords[i-1][1]-CLCoords[i][1])**2+(CLCoords[i-1][2]-CLCoords[i][2])**2)**0.5
+				CL_Length.append(Distance_)
+			print ("------ The length of the geometry is is: %.05f"%CL_Length[-1])
 
 		#Read the velocity data
-		InputFiles=sorted(glob(self.Args.InputFolder+"/*.vtu"))
+		InputFiles=glob(self.Args.InputFolder+"/*.vtu")
+		InputFiles=sorted(InputFiles, key=lambda s: int(re.search(r'\d+', s.split("/")[-1].split(".")[0]).group()))
 
 		#Get the number of points for source velocity
 		Npts=ReadVTUFile(InputFiles[0]).GetNumberOfPoints() #Number of coordinate points
@@ -28,18 +50,22 @@ class PlotAlongCenterline():
 		
 		#Get the number of points for the target velocity
 		if self.Args.InputFolder2 is not None:
-			InputFiles2=sorted(glob(self.Args.InputFolder2+"/*.vtu"))
-			Npts_target=ReadVTUFile(InputFiles2).GetNumberOfPoints()
+			InputFiles2=(glob(self.Args.InputFolder2+"/*.vtu"))
+			InputFiles2=sorted(InputFiles2, key=lambda s: int(re.search(r'\d+', s.split("/")[-1]).group()))
+			Npts_target=ReadVTUFile(InputFiles2[0]).GetNumberOfPoints()
 			Nt_target=len(InputFiles2)
 			if Npts!=Npts_target: 
 				print ("Mesh points for InputFolder and InputFolder2 are not equal")
 				print ("Exiting...")
 				exit(1)
-			if Nt!=Nt_target:
+			elif Nt!=Nt_target:
 				print ("The number of timepoints for InputFolder and InputFolder2 are not equal")
 				print ("Exiting...")
 				exit(1)
-			
+			else:
+				print ("--- Number of time steps in InputFolder1 & InputFolder2:  %d"%Npts)
+				print ("--- Number of Mesh Points in InputFolder1 & InputFolder2: %d"%Nt)
+				print ("\n")
 
 		#Create a Velocity Array
 		Velocity=np.zeros(shape=(Npts,Nt))
@@ -48,23 +74,27 @@ class PlotAlongCenterline():
 			L2Norm=np.zeros(Nt)	
 
 		#Assign the mesh point to the closest centerline point
-		if self.Args.CenterlineFile is not None:
-			CLMeshArray=[[] for i in range(len(CLCoords))]
-			File1=ReadVTUFile(InputFiles)
+		if self.Args.CenterlineFile:
+			Mesh_ClosestCLId=[]
+			File1=ReadVTUFile(InputFiles[0])
 			#First find the closest centerline point to each mesh point:
 			for i in range(Npts):
 				coord_=File1.GetPoint(i)
 				ClosestPoint_,ID_=ClosestPoint(coord_,CLCoords)
-				CLMeshArray[ID_].append(i)
+				Mesh_ClosestCLId.append(ID_)
 		
 			#Create a velocity array divided in centerline points
-			VelocityCL=[np.zeros(shape=(len(CLMeshArray[i]),Nt)) for i in range(len(CLMeshArray))]
-			L2NormCL=np.array(len(CLCoords))	
+			VelocityCL=[[] for i in range(len(CLCoords))]
+			if self.Args.InputFolder2:
+				VelocityCL2=[[] for i in range(len(CLCoords))]
+				L2NormCL=np.zeros(len(CLCoords))
+				
 
 		#Compute global POD, L2Norm
 		counter=0
 		for i in range(len(InputFiles)):
 			print ("------ Looping over: %s"%InputFiles[i])
+			if self.Args.InputFolder2: print("--- Ground-truth File: %s"%InputFiles2[i])
 			#Read the VTU Files for Velocity 1
 			Vel_=vtk_to_numpy(ReadVTUFile(InputFiles[i]).GetPointData().GetArray(self.Args.ArrayName))
 			VelMag_=np.power(Vel_[:,0]**2+Vel_[:,1]**2+Vel_[:,2]**2,0.5)
@@ -78,40 +108,91 @@ class PlotAlongCenterline():
 				Velocity2[:,counter]=VelMag2_
 
 				#Computing the L2Norm
-				L2Norm_=(np.sum(np.power(VelMag_[:,0]-VelMag2_[:,0],2)))**0.5
+				L2Norm_=(np.sum(np.power(VelMag_-VelMag2_,2)))**0.5
 				L2Norm_/=(np.sum(np.power(VelMag2_,2)))**0.5
-				L2Norm.append(L2Norm_)
+				L2Norm[i]=L2Norm_
 
 
-			#Loop over the centerline points and compute quantities 
-			#if (self.Args.CenterlineFile is not None):
-				print ("--------- Centerline Analaysis ---------")
-				#Loop over all of the centerline coordinates
-				#for j in range(len(CLCoords)):
-					#For each centerline coordinate, store velocity
-				#	for k in range(len(CLMeshArray[j])):	
-									
-		
-			
+			if self.Args.CenterlineFile:
+				for j in range(0,Npts):
+					CL_id_=Mesh_ClosestCLId[j]
+					VelocityCL[CL_id_].append(VelMag_[j])
+					if self.Args.InputFolder2: 
+						VelocityCL2[CL_id_].append(VelMag2_[j])
+				if self.Args.InputFolder2:
+					for j in range(len(CLCoords)):
+						L2NormCL_=(np.sum(np.power(np.array(VelocityCL[j])-np.array(VelocityCL2[j]),2)))**0.5
+						L2NormCL_/=(np.sum(np.power(np.array(VelocityCL2[j]),2)))**0.5
+						L2NormCL[j]+=L2NormCL_
+						
 			counter+=1
+		
+		#Get the time-averaged L2-norm along the centerline
+		L2NormCL=L2NormCL/float(counter)
 	
-		#Compute the POD Eigen-spectra
-		print ("--- Computing POD Eigen-Spectra")
-		POD_res=modred.compute_POD_arrays_snaps_method(Velocity,list(modred.range(60)))
-		print(POD_res.modes)
-		print(POD_res.eigvals)	
+		#Compute the POD Eigen-spectra for InputFolder1
+		print ("--- Computing POD Eigen-Spectra for InputFolder1")
+		POD_res=modred.compute_POD_arrays_snaps_method(Velocity,list(modred.range(len(InputFiles))))
+		EnergySpec=POD_res.eigvals/np.sum(POD_res.eigvals)
 
+		print ("--- Writing POD sepectra for InputFolder1 in: %s"%self.Args.OutputFolder+"/POD_InFile1.dat")
+		outfile=open(self.Args.OutputFolder+"/POD_InFile1.dat",'w')
+		outfile.write("Mode(k) %Energy\n")
+		for i in range(len(EnergySpec)):outfile.write(str(i)+" "+str(EnergySpec[i])+"\n")
+		outfile.close()
 
-		print ("--- Writing out the results")
-		#Write the L2 Norm if a ground-truth velocity file was provided.	
-		if self.Args.InputFolder2 is not None: 
-			print ("------ writing L2Norms: %s/L2norm_time.dat"%self.Args.OutputFolder)
-			#Write L2Norm over time
-			outfile=open(self.Args.OutFolder+"/L2norm_time.dat")
-			outfile.write("Timestep Time L2Norm\n")	
-			for i in range(len(L2Norm)): outfile.write("%.05f %.05f %.05f\n"%(i,float(i)/len(L2Norm),L2Norm[i]))
+		#Compute the POD Eigen-spectra for InputFolder2
+		if self.Args.InputFolder2:
+			print ("--- Computing POD Eigen-Spectra for InputFolder2")
+			POD_res=modred.compute_POD_arrays_snaps_method(Velocity2,list(modred.range(len(InputFiles))))
+			EnergySpec=POD_res.eigvals/np.sum(POD_res.eigvals)
+			#Write the EigenSpectra
+			print ("--- Writing POD spectra for InputFolder2 in: %s"%self.Args.OutputFolder+"/POD_InFile2.dat")
+			outfile=open(self.Args.OutputFolder+"/POD_InFile2.dat",'w')
+			outfile.write("Mode(k) %Energy\n")
+			for i in range(len(EnergySpec)):outfile.write(str(i)+" "+str(EnergySpec[i])+"\n")
 			outfile.close()
 
+			#Compute the L2 Norms
+			print ("------ Writing L2-Norm: %s/L2norm_time.dat"%self.Args.OutputFolder)
+			#Write L2Norm over time
+			outfile=open(self.Args.OutputFolder+"/L2norm_time.dat",'w')
+			outfile.write("#Time-Averaged L2Norm: %.010f\n"%np.average(L2Norm))
+			outfile.write("Timestep L2Norm\n")	
+			for i in range(len(L2Norm)):outfile.write("%.010f %.010f\n"%(i,L2Norm[i]))
+			outfile.close()
+
+		if self.Args.CenterlineFile and self.Args.InputFolder2:
+			print ("------ Writing time-averaged L2-Norm CL: %s/L2Norm_CL_timeaveraged.dat"%self.Args.OutputFolder)
+			outfile=open(self.Args.OutputFolder+"/L2norm_CL_timeaveraged.dat",'w')
+			outfile.write("Length L2Norm\n")
+			for i in range(len(CLCoords)): outfile.write("%.010f %.010f\n"%(CL_Length[i],L2NormCL[i]))
+			outfile.close()
+				
+		if self.Args.CenterlineFile:
+			print ("------ Computing and Writing POD Eigen-Spectra Along the Centerline for InputFolder1")
+			outfile=open(self.Args.OutputFolder+"/POD_CL_InFile1.dat",'w')
+			outfile.write("Mode(k) %Energy>%d\n"%self.Args.ModeCutOff)
+			for i in range(len(CLCoords)):
+				#POD Eigen-values after the cut-off mode 
+				POD_res_=modred.compute_POD_arrays_snaps_method(VelocityCL[i],list(modred.range(Nt)))
+				EnergySpec_=sum((POD_res.eigvals/np.sum(POD_res.eigvals))[2:])
+				outfile.write("%.010f %.010f\n"%(CL_Length[i],EnergySpec_))
+			outfile.close()
+			
+		if self.Args.CenterlineFile and self.Args.InputFolder2:
+			print ("------ Computing and Writing POD Eigen-Spectra Along the Centerline for InputFolder2")
+			outfile=open(self.Args.OutputFolder+"/POD_CL_InFile2.dat",'w')
+			outfile.write("Mode(k) %Energy>%d\n"%self.Args.ModeCutOff)
+			for i in range(len(CLCoords)):
+				#POD Eigen-values after the cut-off mode 
+				POD_res_=modred.compute_POD_arrays_snaps_method(VelocityCL2[i],list(modred.range(Nt)))
+				EnergySpec_=sum((POD_res.eigvals/np.sum(POD_res.eigvals))[2:])
+				outfile.write("%.010f %.010f\n"%(CL_Length[i],EnergySpec_))
+			outfile.close()
+	
+					
+				
 
 if __name__=="__main__":
          #Description
@@ -126,8 +207,10 @@ if __name__=="__main__":
 	parser.add_argument('-Period', '--Period', type=int, required=False,default=1, dest="Period",help="The duration of the cardiac cycle. Default=1 second.")
 	
 	parser.add_argument('-CenterlineFile', '--CenterlineFile', type=str, required=False, dest="CenterlineFile",help="The file containing the centerline.")
+	
+	parser.add_argument('-ModeCutOff', '--ModeCutOff', type=int, required=False, default=2, dest="ModeCutOff",help="The POD modes after which we consider the flow to be turbulent.")
 
  	#Output Filename 
 	parser.add_argument('-OutputFolder', '--OutputFolder', type=str, required=False, dest="OutputFolder",help="An output folder to store the centerlines and data")
 	args=parser.parse_args()
-	PlotAlongCenterline(args).Main()	
+	DataAnalysis(args).Main()	
