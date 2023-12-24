@@ -285,7 +285,6 @@ def ConvertPointsToLine(PointsArray):
         for i in range(0, len(PointsArray)):
                 polyLine.GetPointIds().SetId(i, i)
 
-
         # Create a cell array to store the lines in and add the lines to it
         cells = vtk.vtkCellArray()
         cells.InsertNextCell(polyLine)
@@ -300,5 +299,8 @@ def ConvertPointsToLine(PointsArray):
         polyData.SetLines(cells)
 
         return polyData
+
+
+
 
 

@@ -10,22 +10,22 @@ class ComputeTemporalAverage():
 	def __init__(self,Args):
 		self.Args=Args
 		if self.Args.OutputFolder is None:
-			self.Args.OutputFolder=self.Args.InputFolder+"../TemporalAvg"
+			self.Args.OutputFolder=self.Args.InputFolder+"/../TemporalAvg"
 			os.system("mkdir %s"%self.Args.OutputFolder)
-
+		
 	def Main(self):
 		#Read all of the file name
-		InputFiles1=sorted(glob(self.Args.InputFolder+"/all_results.vtu*.vtu")) #volumetric files 
-		InputFiles2=sorted(glob(self.Args.InputFolder+"/all_results.vtp*.vtp")) #surface files
+		InputFiles1=sorted(glob(self.Args.InputFolder+"/*.vtu")) #volumetric files 
+		InputFiles2=sorted(glob(self.Args.InputFolder+"/*.vtp")) #surface files
 		
  
 		#Loop over all of the file names and store the values
 		File1=ReadVTUFile(InputFiles1[0])
-		File2=ReadVTPFile(InputFiles2[0])
+		if len(InputFiles2)>0: File2=ReadVTPFile(InputFiles2[0])
 		
 		#Get the number of points
 		NPoints1=File1.GetNumberOfPoints()
-		NPoints2=File2.GetNumberOfPoints()
+		if len(InputFiles2)>0: NPoints2=File2.GetNumberOfPoints()
 		
 		#For volumetric data
 		VelocityX=np.zeros(shape=(len(InputFiles1),NPoints1))
@@ -36,18 +36,19 @@ class ComputeTemporalAverage():
 		Pressure_=np.zeros(NPoints1)
 
 		#For surface data
-		WSSX=np.zeros(shape=(len(InputFiles2),NPoints2))
-		WSSY=np.zeros(shape=(len(InputFiles2),NPoints2))
-		WSSZ=np.zeros(shape=(len(InputFiles2),NPoints2))
-		WSSMag=np.zeros(shape=(len(InputFiles2),NPoints2))
-		WSSMag_=np.zeros(NPoints2)
+		if len(InputFiles2)>0:
+			WSSX=np.zeros(shape=(len(InputFiles2),NPoints2))
+			WSSY=np.zeros(shape=(len(InputFiles2),NPoints2))
+			WSSZ=np.zeros(shape=(len(InputFiles2),NPoints2))
+			WSSMag=np.zeros(shape=(len(InputFiles2),NPoints2))
+			WSSMag_=np.zeros(NPoints2)
 		
 
 		#Loop over SV result files
 		counter=0 #filename or timestep
 		for j in range(len(InputFiles1)):
 			VelocityFile_=ReadVTUFile(InputFiles1[j])
-			WSSFile_=ReadVTPFile(InputFiles2[j])
+			if len(InputFiles2)>0: WSSFile_=ReadVTPFile(InputFiles2[j])
 			
 			print ("------ Looping over %s"%InputFiles1[j])
 			#Loop over all of the points
@@ -59,14 +60,15 @@ class ComputeTemporalAverage():
 				VelocityMag_[i]+=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
 				Pressure_[i]+=VelocityFile_.GetPointData().GetArray("pressure").GetValue(i)
 			                        
-			print ("------ Looping over %s"%InputFiles2[j])
+			if len(InputFiles2)>0: print ("------ Looping over %s"%InputFiles2[j])
 			#Loop over all of the points
-			for i in range(0,NPoints2):
-				WSSX[counter,i]=WSSFile_.GetPointData().GetArray("vWSS").GetValue(i*3)
-				WSSY[counter,i]=WSSFile_.GetPointData().GetArray("vWSS").GetValue(i*3+1)
-				WSSZ[counter,i]=WSSFile_.GetPointData().GetArray("vWSS").GetValue(i*3+2)
-				WSSMag[counter,i]=np.sqrt(WSSX[counter,i]**2+WSSY[counter,i]**2+WSSZ[counter,i]**2)
-				WSSMag_[i]+=np.sqrt(WSSX[counter,i]**2+WSSY[counter,i]**2+WSSZ[counter,i]**2)
+			if len(InputFiles2)>0:
+				for i in range(0,NPoints2):
+					WSSX[counter,i]=WSSFile_.GetPointData().GetArray("vWSS").GetValue(i*3)
+					WSSY[counter,i]=WSSFile_.GetPointData().GetArray("vWSS").GetValue(i*3+1)
+					WSSZ[counter,i]=WSSFile_.GetPointData().GetArray("vWSS").GetValue(i*3+2)
+					WSSMag[counter,i]=np.sqrt(WSSX[counter,i]**2+WSSY[counter,i]**2+WSSZ[counter,i]**2)
+					WSSMag_[i]+=np.sqrt(WSSX[counter,i]**2+WSSY[counter,i]**2+WSSZ[counter,i]**2)
 
 			counter+=1
 			
@@ -76,14 +78,15 @@ class ComputeTemporalAverage():
 		time=np.linspace(0,self.Args.Period,N_ts)
 		self.W = fftfreq(N_ts, d=time[1]-time[0])
 		VelocityMag_=VelocityMag_*(1./counter)
-		WSSMag_=WSSMag_*(1./counter)
+		if len(InputFiles2)>0: WSSMag_=WSSMag_*(1./counter)
 		Pressure_=Pressure_*(1./counter)
 
 		#Compute Frequency Analysis
 		SPI=np.zeros(NPoints1)
 		TKE=np.zeros(NPoints1)
-		SPI_surface=np.zeros(NPoints2)
-		OSI=np.zeros(NPoints2)
+		if len(InputFiles2)>0:
+			SPI_surface=np.zeros(NPoints2)
+			OSI=np.zeros(NPoints2)
 
 		print ("\n")
 		print ("--- Computing Volumetric SPI and TKE...")
@@ -94,14 +97,16 @@ class ComputeTemporalAverage():
 			W_tke_=np.mean(np.power(self.filter_TKE(VelocityZ[:,i]),2))
 			TKE[i]=0.5*(U_tke_+V_tke_+W_tke_)
 
-		print ("\n")
-		print ("--- Computing Surface SPI, WSS and OSI ...")
-		for i in range(NPoints2):
-			SPI_surface[i]=self.filter_SPI(WSSMag[:,i])
-			if WSSMag_[i]==0.0: 
-				OSI[i]=0.0
-			else:
-				OSI[i]=0.5*(1-np.sqrt(np.mean(WSSX[:,i])**2+np.mean(WSSY[:,i])**2+np.mean(WSSZ[:,i])**2)/WSSMag_[i])	
+
+		if len(InputFiles2)>0:
+			print ("\n")
+			print ("--- Computing Surface SPI, WSS and OSI ...")
+			for i in range(NPoints2):
+				SPI_surface[i]=self.filter_SPI(WSSMag[:,i])
+				if WSSMag_[i]==0.0: 
+					OSI[i]=0.0
+				else:
+					OSI[i]=0.5*(1-np.sqrt(np.mean(WSSX[:,i])**2+np.mean(WSSY[:,i])**2+np.mean(WSSZ[:,i])**2)/WSSMag_[i])	
 
 
                 #Add a new array to the Volumetric File
@@ -122,17 +127,18 @@ class ComputeTemporalAverage():
 		File1.GetPointData().AddArray(TKE_VTK)
 
 		#Add new array to the Surface File
-		WSSMagVTK=numpy_to_vtk(WSSMag_)
-		WSSMagVTK.SetName("WSS")
-		File2.GetPointData().AddArray(WSSMagVTK)
+		if len(InputFiles2)>0:
+			WSSMagVTK=numpy_to_vtk(WSSMag_)
+			WSSMagVTK.SetName("WSS")
+			File2.GetPointData().AddArray(WSSMagVTK)
 
-		SPI_surface_VTK=numpy_to_vtk(SPI_surface)
-		SPI_surface_VTK.SetName("SPI_WSS")
-		File2.GetPointData().AddArray(SPI_surface_VTK)
+			SPI_surface_VTK=numpy_to_vtk(SPI_surface)
+			SPI_surface_VTK.SetName("SPI_WSS")
+			File2.GetPointData().AddArray(SPI_surface_VTK)
 		
-		OSI_VTK=numpy_to_vtk(OSI)
-		OSI_VTK.SetName("OSI")
-		File2.GetPointData().AddArray(OSI_VTK)
+			OSI_VTK=numpy_to_vtk(OSI)
+			OSI_VTK.SetName("OSI")
+			File2.GetPointData().AddArray(OSI_VTK)
 		
 
 		#clean up the volumetric file
@@ -148,19 +154,21 @@ class ComputeTemporalAverage():
 	
 
                 #Clean up the surface file
-		File2.GetPointData().RemoveArray("pressure")
-		File2.GetPointData().RemoveArray("velocity")
-		File2.GetPointData().RemoveArray("vinplane_traction")
-		File2.GetPointData().RemoveArray("displacement")
-		File2.GetPointData().RemoveArray("wallproperty")
-		File2.GetPointData().RemoveArray("vWSS")
-		File2.GetPointData().RemoveArray("timeDeriv")
-		File2.GetPointData().RemoveArray("average_speed")
-		File2.GetPointData().RemoveArray("average_pressure")	
+		if len(InputFiles2)>0:
+			File2.GetPointData().RemoveArray("pressure")
+			File2.GetPointData().RemoveArray("velocity")
+			File2.GetPointData().RemoveArray("vinplane_traction")
+			File2.GetPointData().RemoveArray("displacement")
+			File2.GetPointData().RemoveArray("wallproperty")
+			File2.GetPointData().RemoveArray("vWSS")
+			File2.GetPointData().RemoveArray("timeDeriv")
+			File2.GetPointData().RemoveArray("average_speed")
+			File2.GetPointData().RemoveArray("average_pressure")	
 		
 		#Write the vtu file
 		WriteVTUFile(self.Args.OutputFolder+"/TemporalVolumetricAveragedResults.vtu",File1)
-		WriteVTPFile(self.Args.OutputFolder+"/TemporalSurfaceAveragedResults.vtp",File2)
+		if len(InputFiles2)>0:
+			WriteVTPFile(self.Args.OutputFolder+"/TemporalSurfaceAveragedResults.vtp",File2)
 
 	def filter_TKE(self,U):
 		#For FKE
@@ -168,7 +176,6 @@ class ComputeTemporalAverage():
 		U_cut_fft   = U_fft.copy()
 		U_cut_fft[(self.W<self.Args.CutoffFrequency)]=0
 		U_ifft      =ifft(U_cut_fft)
-		print (U_ifft)
 		return U_ifft
 
 	def filter_SPI(self,U):

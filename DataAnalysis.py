@@ -11,7 +11,8 @@
 import sys
 import os
 from glob import glob
-from vtk.util.numpy_support import vtk_to_numpy as npvtk
+from vtk.util.numpy_support import vtk_to_numpy 
+from vtk.util.numpy_support import numpy_to_vtk 
 import numpy as np
 import vtk
 import argparse
@@ -88,7 +89,18 @@ class DataAnalysis():
 			if self.Args.InputFolder2:
 				VelocityCL2=[[] for i in range(len(CLCoords))]
 				L2NormCL=np.zeros(len(CLCoords))
-				
+
+
+		#WRITE A MESH FILE WITH CL TAGS ON FOR THE VOLUMETRIC MESH TO CHECK IF THE ASSIGNMENT IS CORRECT
+		#Write the Centerline Sections to File.
+		Mesh_ClosestCLId_VTK=numpy_to_vtk(np.array(Mesh_ClosestCLId))
+		Mesh_ClosestCLId_VTK.SetName("CenterlineTags")
+		#Remove extra arrays from the Velocity File
+		NArrays_=File1.GetPointData().GetNumberOfArrays()
+		for i in range(NArrays_): File1.GetPointData().RemoveArray(1) 
+		File1.GetPointData().AddArray(Mesh_ClosestCLId_VTK)
+		WriteVTUFile("%s/Velocity_CenterlineTags.vtu"%self.Args.OutputFolder,File1)
+			
 
 		#Compute global POD, L2Norm
 		counter=0
