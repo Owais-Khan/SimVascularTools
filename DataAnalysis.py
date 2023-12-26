@@ -7,7 +7,7 @@
 #	- Compute POD eigen-spectra along the centerline for coarse velocity (optional)
 #	- Compute POD eigen-spectra along the centerline for fine velocity (optional)
 
-
+########### NEEEDD TO FIX POD CL CODE ################
 import sys
 import os
 from glob import glob
@@ -33,7 +33,6 @@ class DataAnalysis():
 			print ("--- Reading Centerline File: %s"%self.Args.CenterlineFile)
 			Centerline=ReadVTPFile(self.Args.CenterlineFile)
 			CLCoords=np.array([Centerline.GetPoint(i) for i in range(Centerline.GetNumberOfPoints())])
-			
 			#Create a Distance Array as well
 			CL_Length=[0]
 			for i in range(1,len(CLCoords)):
@@ -138,7 +137,7 @@ class DataAnalysis():
 						L2NormCL[j]+=L2NormCL_
 						
 			counter+=1
-		
+
 		#Get the time-averaged L2-norm along the centerline
 		L2NormCL=L2NormCL/float(counter)
 	
@@ -182,23 +181,27 @@ class DataAnalysis():
 			outfile.close()
 				
 		if self.Args.CenterlineFile:
-			print ("------ Computing and Writing POD Eigen-Spectra Along the Centerline for InputFolder1")
+			print ("------ Computing and Writing POD Eigen-Spectra (sum of > Mode2) Along the Centerline for InputFolder1")
 			outfile=open(self.Args.OutputFolder+"/POD_CL_InFile1.dat",'w')
-			outfile.write("Mode(k) %Energy>%d\n"%self.Args.ModeCutOff)
+			outfile.write("Mode(k) Energy>%d\n"%self.Args.ModeCutOff)
 			for i in range(len(CLCoords)):
 				#POD Eigen-values after the cut-off mode 
-				POD_res_=modred.compute_POD_arrays_snaps_method(VelocityCL[i],list(modred.range(Nt)))
+				VelocityCL_=np.array(VelocityCL[i])
+				VelocityCL_.resize(int(len(VelocityCL_)/Nt),Nt)
+				POD_res_=modred.compute_POD_arrays_snaps_method(VelocityCL_,list(modred.range(Nt)))
 				EnergySpec_=sum((POD_res.eigvals/np.sum(POD_res.eigvals))[2:])
 				outfile.write("%.010f %.010f\n"%(CL_Length[i],EnergySpec_))
 			outfile.close()
 			
 		if self.Args.CenterlineFile and self.Args.InputFolder2:
-			print ("------ Computing and Writing POD Eigen-Spectra Along the Centerline for InputFolder2")
+			print ("------ Computing and Writing POD Eigen-Spectra (sum of >Mode2) Along the Centerline for InputFolder2")
 			outfile=open(self.Args.OutputFolder+"/POD_CL_InFile2.dat",'w')
-			outfile.write("Mode(k) %Energy>%d\n"%self.Args.ModeCutOff)
+			outfile.write("Mode(k) Energy>%d\n"%self.Args.ModeCutOff)
 			for i in range(len(CLCoords)):
-				#POD Eigen-values after the cut-off mode 
-				POD_res_=modred.compute_POD_arrays_snaps_method(VelocityCL2[i],list(modred.range(Nt)))
+				#POD Eigen-values after the cut-off mode
+				VelocityCL2_=np.array(VelocityCL2[i])
+				VelocityCL2_.resize(int(len(VelocityCL2_)/Nt),Nt)
+				POD_res_=modred.compute_POD_arrays_snaps_method(VelocityCL2_,list(modred.range(Nt)))
 				EnergySpec_=sum((POD_res.eigvals/np.sum(POD_res.eigvals))[2:])
 				outfile.write("%.010f %.010f\n"%(CL_Length[i],EnergySpec_))
 			outfile.close()
