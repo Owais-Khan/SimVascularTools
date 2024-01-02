@@ -320,4 +320,20 @@ def ClipDataSet(Data,Plane):
 	clipper.Update()
 	return clipper.GetOutput()
 
-
+#Write Tecplot2D Format. Needs VarNames (i.e., variable names) and Data as lists
+def Tecplot2DPlot(X,Y,Data,VarNames,FileName):
+	outfile=open(FileName,'w')
+	outfile.write('TITLE = "2D Contour Plot"\n')
+	outfile.write('VARIABLES = "X", "Y"')
+	for i in range(len(VarNames)):
+		outfile.write(',"%s"'%VarNames[i])
+	outfile.write('\n')
+	outfile.write('ZONE T="Data", I=%d, J=%d, DATAPACKING=POINT\n'%(len(Y),len(X)))
+	for i in range(len(X)):
+		for j in range(len(Y)):
+			outfile.write("%.05f %.05f"%(X[i],Y[j]))
+			for k in range(len(Data)):
+				outfile.write(" %.014f"%Data[k][j,i])
+			outfile.write("\n")
+	outfile.close()	
+		
