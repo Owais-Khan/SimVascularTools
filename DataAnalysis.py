@@ -26,6 +26,12 @@ class DataAnalysis():
 		if self.Args.OutputFolder is None:
 			self.Args.OutputFolder=self.Args.InputFolder+"/../DataAnalysis/"
 			os.system("mkdir %s"%self.Args.OutputFolder)
+	
+		if self.Args.ClipPlane:
+			self.Args.Plane=vtk.vtkPlane()
+			self.Args.Plane.SetOrigin(self.Args.ClipPlaneOrigin)
+			self.Args.Plane.SetNormal(self.Args.ClipPlaneNormal)
+		
 
 	def Main(self):
                 #Read the Centerline
@@ -45,14 +51,16 @@ class DataAnalysis():
 		InputFiles=sorted(InputFiles, key=lambda s: int(re.search(r'\d+', s.split("/")[-1].split(".")[0]).group()))
 
 		#Get the number of points for source velocity
-		Npts=ReadVTUFile(InputFiles[0]).GetNumberOfPoints() #Number of coordinate points
+		if self.Args.ClipPlane: Npts=ClipDataSet(ReadVTUFile(InputFiles[0]),self.Args.Plane).GetNumberOfPoints() #Number of coordinate points
+		else: Npts=ReadVTUFile(InputFiles[0]).GetNumberOfPoints()
 		Nt=len(InputFiles) #Number of time points
 		
 		#Get the number of points for the target velocity
 		if self.Args.InputFolder2 is not None:
 			InputFiles2=(glob(self.Args.InputFolder2+"/*.vtu"))
 			InputFiles2=sorted(InputFiles2, key=lambda s: int(re.search(r'\d+', s.split("/")[-1]).group()))
-			Npts_target=ReadVTUFile(InputFiles2[0]).GetNumberOfPoints()
+			if self.Args.ClipPlane: Npts_target=ClipDataSet(ReadVTUFile(InputFiles2[0]),self.Args.Plane).GetNumberOfPoints()
+			else: Npts_target=ReadVTUFile(InputFiles2[0]).GetNumberOfPoints()
 			Nt_target=len(InputFiles2)
 			if Npts!=Npts_target: 
 				print ("Mesh points for InputFolder and InputFolder2 are not equal")
@@ -107,14 +115,18 @@ class DataAnalysis():
 			print ("------ Looping over: %s"%InputFiles[i])
 			if self.Args.InputFolder2: print("--- Ground-truth File: %s"%InputFiles2[i])
 			#Read the VTU Files for Velocity 1
-			Vel_=vtk_to_numpy(ReadVTUFile(InputFiles[i]).GetPointData().GetArray(self.Args.ArrayName))
+			if self.Args.ClipPlane:
+				Vel_=vtk_to_numpy(ClipDataSet(ReadVTUFile(InputFiles[i]),self.Args.Plane).GetPointData().GetArray(self.Args.ArrayName)) 
+			else: Vel_=vtk_to_numpy(ReadVTUFile(InputFiles[i]).GetPointData().GetArray(self.Args.ArrayName))
 			VelMag_=np.power(Vel_[:,0]**2+Vel_[:,1]**2+Vel_[:,2]**2,0.5)
 			Velocity[:,counter]=VelMag_
 			
 			#Compute the L2Norm at the current timestep
 			if self.Args.InputFolder2:
 				#Read the VTU Files for Velocity 2
-				Vel2_=vtk_to_numpy(ReadVTUFile(InputFiles2[i]).GetPointData().GetArray(self.Args.ArrayName))
+				if self.Args.ClipPlane: 
+					Vel2_=vtk_to_numpy(ClipDataSet(ReadVTUFile(InputFiles2[i]),self.Args.Plane).GetPointData().GetArray(self.Args.ArrayName))
+				else: Vel2_=vtk_to_numpy(ReadVTUFile(InputFiles2[i]).GetPointData().GetArray(self.Args.ArrayName))
 				VelMag2_=np.power(Vel2_[:,0]**2+Vel2_[:,1]**2+Vel2_[:,2]**2,0.5)
 				Velocity2[:,counter]=VelMag2_
 
@@ -216,6 +228,13 @@ if __name__=="__main__":
 	parser.add_argument('-InputFolder', '--InputFolder', type=str, required=True, dest="InputFolder",help="The  input folder that contains the velocity files from SimVascular")
 	
 	parser.add_argument('-InputFolder2', '--InputFolder2', type=str, required=False, dest="InputFolder2",help="The  input folder that contains the ground-truth velocity for computing errors such as L2-norms etc.")
+
+
+	parser.add_argument('-ClipPlane', '--ClipPlane', type=int, required=False, dest="ClipPlane", help="Whether the dataset should be clipped before performing the analysis. Set to 1 to turn on.")
+	
+	parser.add_argument('-ClipPlaneOrigin', '--ClipPlaneOrigin', type=ListOfFloats, required=False, dest="ClipPlaneOrigin", default="0.06356052780154019,0.017335321237208618,0.5993404499350882",help="The origin of the plane to clip before analyzing the data.")
+	
+	parser.add_argument('-ClipPlaneNormal', '--ClipPlaneNormal', type=ListOfFloats, required=False, dest="ClipPlaneNormal", default="-0.09153368148760842,-0.03734511295045089,-0.9951014660284866",help="The normal of the plane to clip before analyzing the data")
 	
 	parser.add_argument('-ArrayName', '--ArrayName', type=str, required=False,default="velocity", dest="ArrayName",help="The array name to process. Default is velocity")
 	

@@ -18,8 +18,6 @@ def ReadDicomFiles(FolderName):
 #ReadDicomFiles("/Users/mokhan/GoogleDrive/Owais/Research_Postdoc/perfusion_project/Simvascular/CABG1A/Images/CTA")
 
 	
-	
-
 ############ Input/Output ##################
 def ReadVTUFile(FileName):
 	reader=vtk.vtkXMLUnstructuredGridReader()
@@ -119,6 +117,7 @@ def CutPlane(Volume,Origin,Norm):
 	Slice.SetInputData(Volume)
 	Slice.Update()
 	return Slice.GetOutput()
+
 
 def CutLine(Slice,Point,Centroid,Norm1):
 	#Get the two in-plane normals
@@ -301,6 +300,24 @@ def ConvertPointsToLine(PointsArray):
         return polyData
 
 
+def ListOfFloats(arg):
+    return list(map(float, arg.split(',')))
 
+def ListOfInts(arg):
+    return list(map(int, arg.split(',')))
+
+def ListOfStrings(arg):
+    return list(map(str, arg.split(',')))
+
+
+def ClipDataSet(Data,Plane):
+	clipper=vtk.vtkClipDataSet()
+	clipper.SetInputData(Data)
+	clipper.SetClipFunction(Plane)
+	#Clipper.SetInsideO
+	clipper.GenerateClipScalarsOff()
+	clipper.GenerateClippedOutputOff()
+	clipper.Update()
+	return clipper.GetOutput()
 
 
