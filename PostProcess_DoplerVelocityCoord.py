@@ -63,16 +63,22 @@ class PostProcessingDoplerCoord():
         
         # Calculating the hemodynamic parameters
         Vmin, Vmax = SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValueRange()
-        Pmin, Pmax = SphereOutput.GetPointData().GetArray("Pressure").GetValueRange()
-        Vmean = 0
+        #Pmin, Pmax = SphereOutput.GetPointData().GetArray("Pressure").GetValueRange()
+        Velocity_ = np.empty(SphereOutput.GetNumberOfPoints())
         Pmean = 0
         for j in np.arange(0,SphereOutput.GetNumberOfPoints()):
-            Vmean += SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValue(j)
+            Velocity_[j] = SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValue(j)
             Pmean += SphereOutput.GetPointData().GetArray("Pressure").GetValue(j)
-        Vmean = Vmean/SphereOutput.GetNumberOfPoints()
+        
+        Vmean = np.mean(Velocity_)
+        Velocity_ = np.sort(Velocity_)
+        top_5percent_index = int(0.05*len(Velocity_))
+        Velocity_filtered = Velocity_[top_5percent_index:]
+        V95th = np.max(Velocity_filtered)
+        
         Pmean = Pmean/SphereOutput.GetNumberOfPoints()
 
-        return Vmean, Vmin, Vmax, V95th, Pmean, Pmin, Pmax
+        return Vmean, Vmin, Vmax, V95th, Pmean
     
     def Main(self):
         """loops over input 3D results and applys clipper and saves the results in a textfile
@@ -91,10 +97,10 @@ class PostProcessingDoplerCoord():
         ofile = f"{self.Args.InputFolder}/results.txt"
         
         with open(ofile,"w") as writefile:
-            writefile.writelines("File Name, Mean V, Min V, Max V, 95th p V, Mean P, Min P, Max P")
+            writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th p V, Pmean")
             for n in np.arange(0,N):
                 print("-"*25)
-                print(f"--- Reading File:{filenames[n]}")
+                print(f"--- Reading File: {filenames[n]}")
                 volume = ReadVTUFile(filenames[n])
                 print("--- Computing and Storing the hemodynamic features")
                 writefile.writelines(f"{filenames[n]},{[i for i in self.ComputeHmDy(volume)]}")
