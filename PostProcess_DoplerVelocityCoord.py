@@ -71,10 +71,8 @@ class PostProcessingDoplerCoord():
             Pmean += SphereOutput.GetPointData().GetArray("Pressure").GetValue(j)
         
         Vmean = np.mean(Velocity_)
-        Velocity_ = np.sort(Velocity_)
-        top_5percent_index = int(0.05*len(Velocity_))
-        Velocity_filtered = Velocity_[top_5percent_index:]
-        V95th = np.max(Velocity_filtered)
+        V95th = np.percentile(Velocity_,95)
+        V50 = np.percentile(Velocity_,50)
         
         Pmean = Pmean/SphereOutput.GetNumberOfPoints()
 
