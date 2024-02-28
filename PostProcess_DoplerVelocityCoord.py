@@ -70,6 +70,7 @@ class PostProcessingDoplerCoord():
             Velocity_[j] = SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValue(j)
             Pmean += SphereOutput.GetPointData().GetArray("pressure").GetValue(j)
         
+        Velocity_ = Velocity_[Velocity_ != 0] # remove the wall effect
         Vmean = np.mean(Velocity_)
         V95th = np.percentile(Velocity_,95)
         V50 = np.percentile(Velocity_,50)
