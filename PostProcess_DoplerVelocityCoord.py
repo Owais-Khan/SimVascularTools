@@ -12,7 +12,7 @@ import argparse
 import vtk
 import numpy as np
 
-from utilities import ReadVTUFile, ReadVTPFile, GetCentroid
+from utilities import ReadVTUFile, ReadVTPFile, GetCentroid, WriteVTUFile
 
 class PostProcessingDoplerCoord():
     def __init__(self,Args):
@@ -30,14 +30,14 @@ class PostProcessingDoplerCoord():
         :rtype: vtkSphereClip
         """
         centeroid = GetCentroid(Surface)
-        Radius = ((Surface.GetRange[1]-Surface.GetRange[0])^2 + ...
+        '''Radius = ((Surface.GetRange[1]-Surface.GetRange[0])^2 + ...
                 (Surface.GetRange[3]-Surface.GetRange[2])^2 + ...
                 (Surface.GetRange[5]-Surface.GetRange[4])^2)^0.5/2
-        
+        '''
         #Defining the Sphere
         Sphere = vtk.vtkSphere()
         Sphere.SetCenter(centeroid)
-        Sphere.SetRadius(Radius*2)
+        Sphere.SetRadius(0.35)#Radius*2)
 
         #Implement vtkclipping filter "sphere"
         clipper = vtk.vtkClipDataSet()
@@ -68,7 +68,7 @@ class PostProcessingDoplerCoord():
         Pmean = 0
         for j in np.arange(0,SphereOutput.GetNumberOfPoints()):
             Velocity_[j] = SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValue(j)
-            Pmean += SphereOutput.GetPointData().GetArray("Pressure").GetValue(j)
+            Pmean += SphereOutput.GetPointData().GetArray("pressure").GetValue(j)
         
         Vmean = np.mean(Velocity_)
         V95th = np.percentile(Velocity_,95)
@@ -95,16 +95,17 @@ class PostProcessingDoplerCoord():
         ofile = f"{self.Args.InputFolder}/results.txt"
         
         with open(ofile,"w") as writefile:
-            writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th p V, Pmean")
+            writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th p V, Pmean \n")
             for n in np.arange(0,N):
                 print("-"*25)
                 print(f"--- Reading File: {filenames[n]}")
-                volume = ReadVTUFile(filenames[n])
+                volume = ReadVTUFile(f"{self.Args.InputFolder}/{filenames[n]}")
                 print("--- Computing and Storing the hemodynamic features")
-                writefile.writelines(f"{filenames[n]},{[i for i in self.ComputeHmDy(volume)]}")
+                writefile.writelines(f"{filenames[n]},{[i for i in self.ComputeHmDy(volume)]} \n")
+                WriteVTUFile(f"{self.Args.InputFolder}/clip_location_{filenames[n]}", self.clipper.GetOutput())
 
 
-if "name"=="__main__":
+if __name__=="__main__":
     
     parser = argparse.ArgumentParser()
     
