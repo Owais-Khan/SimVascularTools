@@ -76,7 +76,7 @@ class PostProcessingDoplerCoord():
         
         Pmean = Pmean/SphereOutput.GetNumberOfPoints()
 
-        return Vmean, Vmin, Vmax, V95th, Pmean
+        return Vmean, Vmin, Vmax, V95th, V50, Pmean
     
     def Main(self):
         """loops over input 3D results and applys clipper and saves the results in a textfile
@@ -95,13 +95,13 @@ class PostProcessingDoplerCoord():
         ofile = f"{self.Args.InputFolder}/results.txt"
         
         with open(ofile,"w") as writefile:
-            writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th p V, Pmean \n")
+            writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th percentile V, Vmedian, Pmean \n")
             for n in np.arange(0,N):
                 print("-"*25)
                 print(f"--- Reading File: {filenames[n]}")
                 volume = ReadVTUFile(f"{self.Args.InputFolder}/{filenames[n]}")
                 print("--- Computing and Storing the hemodynamic features")
-                writefile.writelines(f"{filenames[n]},{[i for i in self.ComputeHmDy(volume)]} \n")
+                writefile.writelines(f"{filenames[n]}: {' '.join(str(i) for i in self.ComputeHmDy(volume))} \n")
                 WriteVTUFile(f"{self.Args.InputFolder}/clip_location_{filenames[n]}", self.clipper.GetOutput())
 
 
