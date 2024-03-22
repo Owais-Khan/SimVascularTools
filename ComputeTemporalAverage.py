@@ -18,7 +18,7 @@ class ComputeTemporalAverage():
 		InputFiles1=sorted(glob(self.Args.InputFolder+"/*.vtu")) #volumetric files 
 		InputFiles2=sorted(glob(self.Args.InputFolder+"/*.vtp")) #surface files
 		
- 
+
 		#Loop over all of the file names and store the values
 		File1=ReadVTUFile(InputFiles1[0])
 		if len(InputFiles2)>0: File2=ReadVTPFile(InputFiles2[0])
@@ -59,7 +59,7 @@ class ComputeTemporalAverage():
 				VelocityMag[counter,i]=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
 				VelocityMag_[i]+=np.sqrt(VelocityX[counter,i]**2+VelocityY[counter,i]**2+VelocityZ[counter,i]**2)
 				Pressure_[i]+=VelocityFile_.GetPointData().GetArray("pressure").GetValue(i)
-			                        
+
 			if len(InputFiles2)>0: print ("------ Looping over %s"%InputFiles2[j])
 			#Loop over all of the points
 			if len(InputFiles2)>0:
@@ -206,5 +206,5 @@ if __name__=="__main__":
 	#Put all the arguments together
 	args=parser.parse_args()
 
-        #Call your Class
+    #Call your Class
 	ComputeTemporalAverage(args).Main()	
