@@ -62,13 +62,13 @@ class PostProcessingDoplerCoord():
         SphereOutput = self.clipper.GetOutput()
         
         # Calculating the hemodynamic parameters
-        Vmin, Vmax = SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValueRange()
+        Vmin, Vmax = SphereOutput.GetPointData().GetArray("Velocity").GetValueRange()
         #Pmin, Pmax = SphereOutput.GetPointData().GetArray("Pressure").GetValueRange()
         Velocity_ = np.empty(SphereOutput.GetNumberOfPoints())
         Pmean = 0
         for j in np.arange(0,SphereOutput.GetNumberOfPoints()):
-            Velocity_[j] = SphereOutput.GetPointData().GetArray("velocity_mag_average").GetValue(j)
-            Pmean += SphereOutput.GetPointData().GetArray("pressure").GetValue(j)
+            Velocity_[j] = SphereOutput.GetPointData().GetArray("Velocity").GetValue(j)
+            Pmean += SphereOutput.GetPointData().GetArray("Pressure").GetValue(j)
         
         Velocity_ = Velocity_[Velocity_ != 0] # remove the wall effect
         Vmean = np.mean(Velocity_)
@@ -93,7 +93,10 @@ class PostProcessingDoplerCoord():
         filenames = [filename for filename in filenames if "vtu" in filename]
         filenames = sorted(filenames)
         N = len(filenames)
-        ofile = f"{self.Args.InputFolder}/results.txt"
+
+        locations = self.Args.InputSurface.split("/")
+        location = locations[-1].split(".")
+        ofile = f"{self.Args.InputFolder}/results_{location[0]}.txt"
         
         with open(ofile,"w") as writefile:
             writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th percentile V, Vmedian, Pmean \n")
