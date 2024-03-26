@@ -23,12 +23,13 @@ class PostProcessingDoplerCoord():
         """
         self.Args = Args
 
-    def GetCoord(self, Surface):
+    def GetCoord(self, SurfaceDir):
         """gets the input surface and extract the coordinates and radius
 
         :return: returns a sphere clipper centered at the coordinate and with a double sized radius
         :rtype: vtkSphereClip
         """
+        Surface = ReadVTPFile(SurfaceDir)
         centeroid = GetCentroid(Surface)
         '''Radius = ((Surface.GetRange[1]-Surface.GetRange[0])^2 + ...
                 (Surface.GetRange[3]-Surface.GetRange[2])^2 + ...
@@ -82,38 +83,50 @@ class PostProcessingDoplerCoord():
     def Main(self):
         """loops over input 3D results and applys clipper and saves the results in a textfile
         """
-        # Read the input surface and get its coordinate to define a sphere clip
-        Surface = ReadVTPFile(self.Args.InputSurface)
-        print("--- Reading the input surface")
-        self.GetCoord(Surface)
-        print("--- Defining the sphere clipper")
+        # Read the input surfaces
+        SurfaceName = os.listdir(self.Args.InputSurfaces)
+        SurfaceName = [filename for filename in SurfaceName if "vtp" in filename]
+        
+        
 
         # Read 3D volumetric files within the input folder
         filenames = os.listdir(self.Args.InputFolder)
         filenames = [filename for filename in filenames if "vtu" in filename]
         filenames = sorted(filenames)
-        N = len(filenames)
 
-        locations = self.Args.InputSurface.split("/")
-        location = locations[-1].split(".")
-        ofile = f"{self.Args.InputFolder}/results_{location[0]}.txt"
+        for surface in SurfaceName:
+                
+                print("\n","="*10)
+                location = surface.split(".")
+                print(f"--- Reading the input surface: {surface}")
+                
+                
+                # get surface coordinate to define a sphere clip
+                self.GetCoord(f"{self.Args.InputSurfaces}/{surface}")
+                print("--- Defining the sphere clipper")
+                
+                ofile = f"{self.Args.InputFolder}/results_{location[0]}.txt"
+                
+                with open(ofile,"w") as writefile:
+                    writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th percentile V, Vmedian, Pmean \n")
+                    
+                    for file in filenames:
+                        print("-"*25)
+                        print(f"--- Reading File: {file}")
+                        volume = ReadVTUFile(f"{self.Args.InputFolder}/{file}")
+                        
+                        print("--- Computing and Storing the hemodynamic features")
+                        writefile.writelines(f"{file}: {' '.join(str(i) for i in self.ComputeHmDy(volume))} \n")
+                        WriteVTUFile(f"{self.Args.InputFolder}/{location[0]}_{file}", self.clipper.GetOutput())
+
+
         
-        with open(ofile,"w") as writefile:
-            writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th percentile V, Vmedian, Pmean \n")
-            for n in np.arange(0,N):
-                print("-"*25)
-                print(f"--- Reading File: {filenames[n]}")
-                volume = ReadVTUFile(f"{self.Args.InputFolder}/{filenames[n]}")
-                print("--- Computing and Storing the hemodynamic features")
-                writefile.writelines(f"{filenames[n]}: {' '.join(str(i) for i in self.ComputeHmDy(volume))} \n")
-                WriteVTUFile(f"{self.Args.InputFolder}/clip_location_{filenames[n]}", self.clipper.GetOutput())
-
 
 if __name__=="__main__":
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("-InputSurface", "--InputSurface", type=str, dest="InputSurface", required=True, help="The location of Doppler Velocity Prob")
+    parser.add_argument("-InputSurfaces", "--InputSurfaces", type=str, dest="InputSurfaces", required=True, help="The location of Doppler Velocity Prob defined as a single or several vtp files")
     parser.add_argument("-InputFolder", "--InputFolder", type=str, dest="InputFolder", required=True, help="Folder containing the 3D results of the CFD simulations")
 
     args = parser.parse_args()
