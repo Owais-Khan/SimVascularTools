@@ -38,7 +38,7 @@ class PostProcessingDoplerCoord():
         #Defining the Sphere
         Sphere = vtk.vtkSphere()
         Sphere.SetCenter(centeroid)
-        Sphere.SetRadius(0.35)#Radius*2)
+        Sphere.SetRadius(0.3)#Radius*2)
 
         #Implement vtkclipping filter "sphere"
         clipper = vtk.vtkClipDataSet()
@@ -76,7 +76,7 @@ class PostProcessingDoplerCoord():
         V95th = np.percentile(Velocity_,95)
         V50 = np.percentile(Velocity_,50)
         
-        Pmean = Pmean/SphereOutput.GetNumberOfPoints()
+        Pmean = Pmean/SphereOutput.GetNumberOfPoints()*0.00075006157584566 #Converting from dynes/square cm to mmHg
 
         return Vmean, Vmin, Vmax, V95th, V50, Pmean
     
