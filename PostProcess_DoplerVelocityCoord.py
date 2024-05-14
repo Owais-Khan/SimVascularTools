@@ -2,7 +2,7 @@
     results of the fine CFD simulations using an input surface of the
     Doppler Velocity location for coordinates and radius uses.
 
-    Anahita A. Seresti
+    Anahita A. Seresti Github: @aseresti
     February, 2024
 """
 
@@ -22,6 +22,7 @@ class PostProcessingDoplerCoord():
         :type Args: .vtp .vtu
         """
         self.Args = Args
+        self.OutputDirName = "PostProcessingOutputs"
 
     def GetCoord(self, SurfaceDir):
         """gets the input surface and extract the coordinates and radius
@@ -91,6 +92,17 @@ class PostProcessingDoplerCoord():
 
         # Read 3D volumetric files within the input folder
         filenames = os.listdir(self.Args.InputFolder)
+
+        #Create the Output Directory
+        if self.OutputDirName in filenames:
+            print(f"Output Directory: {self.OutputDirName} Alredy exists!")
+            print(f"Deleting the previous files within the Output Directory: {self.OutputDirName}")
+            os.system(f"rm -rf {self.Args.InputFolder}/{self.OutputDirName}/*")
+        else:
+            os.system(f"mkdir {self.Args.InputFolder}/{self.OutputDirName}")
+            print(f"Output Directory: {self.OutputDirName} Created!")
+
+        #Extract the vtu files within the InputFolder
         filenames = [filename for filename in filenames if "vtu" in filename]
         filenames = sorted(filenames)
 
@@ -105,7 +117,7 @@ class PostProcessingDoplerCoord():
                 self.GetCoord(f"{self.Args.InputSurfaces}/{surface}")
                 print("--- Defining the sphere clipper")
                 
-                ofile = f"{self.Args.InputFolder}/results_{location[0]}.txt"
+                ofile = f"{self.Args.InputFolder}/{self.OutputDirName}/results_{location[0]}.txt"
                 
                 with open(ofile,"w") as writefile:
                     writefile.writelines("File Name, Vmean, Vmin, Vmax, 95th percentile V, Vmedian, Pmean \n")
@@ -117,7 +129,7 @@ class PostProcessingDoplerCoord():
                         
                         print("--- Computing and Storing the hemodynamic features")
                         writefile.writelines(f"{file}: {' '.join(str(i) for i in self.ComputeHmDy(volume))} \n")
-                        WriteVTUFile(f"{self.Args.InputFolder}/{location[0]}_{file}", self.clipper.GetOutput())
+                        WriteVTUFile(f"{self.Args.InputFolder}/{self.OutputDirName}/{location[0]}_{file}", self.clipper.GetOutput())
 
 
         
@@ -126,7 +138,7 @@ if __name__=="__main__":
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("-InputSurfaces", "--InputSurfaces", type=str, dest="InputSurfaces", required=True, help="The location of Doppler Velocity Prob defined as a single or several vtp files")
+    parser.add_argument("-InputSurfaceFolder", "--InputSurfaceFolder", type=str, dest="-InputSurfaceFolder", required=True, help="Folder containing the surface files at the location of Doppler Velocity Prob defined as a single or several vtp files")
     parser.add_argument("-InputFolder", "--InputFolder", type=str, dest="InputFolder", required=True, help="Folder containing the 3D results of the CFD simulations")
 
     args = parser.parse_args()
