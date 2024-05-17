@@ -4,8 +4,8 @@
 #	- Compute POD Eigen-spectra from SimVascular's results of simulated (fine) velocity (optional)
 # 	- Compute L2norm between coarse and fine velocity (optional)
 #	- Compute L2norm along the centerline between coarse and fine velocity field (optional)
-#	- Compute POD eigen-spectra along the centerline for coarse velocity (optional)
-#	- Compute POD eigen-spectra along the centerline for fine velocity (optional)
+#	- Compute POD eigen-spectra along the centerline for coarse velocity (optional) **Need Fixing
+#	- Compute POD eigen-spectra along the centerline for fine velocity (optional) **Need Fixing
 
 ########### NEEEDD TO FIX POD CL CODE ################
 import sys
@@ -225,7 +225,7 @@ if __name__=="__main__":
          #Description
 	parser = argparse.ArgumentParser(description="This script will compute quantities along a given centerline. A SimVascular velocity folder must be provided.")
 
-	parser.add_argument('-InputFolder', '--InputFolder', type=str, required=True, dest="InputFolder",help="The  input folder that contains the velocity files from SimVascular")
+	parser.add_argument('-InputFolder', '--InputFolder', type=str, required=True, dest="InputFolder",help="The  input folder that contains the simulated v elocity files from SimVascular")
 	
 	parser.add_argument('-InputFolder2', '--InputFolder2', type=str, required=False, dest="InputFolder2",help="The  input folder that contains the ground-truth velocity for computing errors such as L2-norms etc.")
 

@@ -29,9 +29,11 @@ class ProjectToNewMesh_VMTK():
 		#print ("--- Read the Mesh File: %s"%self.Args.InputFileName)
 		
 		#Loop over all of the velocity files
+		counter=0
 		for InputFile_ in InputFiles:
 			outputfilename_=self.Args.OutputFolder+InputFile_.split("/")[-1]
-			os.system("vmtkmeshprojection -rfile %s -ifile %s -ofile %s"%(InputFile_,self.Args.InputFileName,self.Args.OutputFolder+InputFile_.split("/")[-1])) 
+			os.system("vmtkmeshprojection -rfile %s -ifile %s -ofile %s/velocity_%05d.vtu"%(InputFile_,self.Args.InputFileName,self.Args.OutputFolder,counter))
+			counter+=1 
 
 	
 if __name__=="__main__":
