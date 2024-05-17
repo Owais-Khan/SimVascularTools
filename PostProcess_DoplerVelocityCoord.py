@@ -66,16 +66,15 @@ class PostProcessingDoplerCoord():
         # Calculating the hemodynamic parameters
         Vmin, Vmax = SphereOutput.GetPointData().GetArray("Velocity").GetValueRange()
         #Pmin, Pmax = SphereOutput.GetPointData().GetArray("Pressure").GetValueRange()
-        Velocity_ = np.empty(SphereOutput.GetNumberOfPoints())
+        Velocity = np.empty(SphereOutput.GetNumberOfPoints())
         Pmean = 0
         for j in np.arange(0,SphereOutput.GetNumberOfPoints()):
-            Velocity_[j] = SphereOutput.GetPointData().GetArray("Velocity").GetValue(j)
+            Velocity[j] = SphereOutput.GetPointData().GetArray("Velocity").GetValue(j)
             Pmean += SphereOutput.GetPointData().GetArray("Pressure").GetValue(j)
-        
-        Velocity_ = Velocity_[Velocity_ != 0] # remove the wall effect
-        Vmean = np.mean(Velocity_)
-        V95th = np.percentile(Velocity_,95)
-        V50 = np.percentile(Velocity_,50)
+
+        Vmean = np.mean(Velocity)
+        V95th = np.percentile(Velocity,95)
+        V50 = np.percentile(Velocity,50)
         
         Pmean = Pmean/SphereOutput.GetNumberOfPoints()*0.00075006157584566 #Converting from dynes/square cm to mmHg
 
@@ -85,7 +84,7 @@ class PostProcessingDoplerCoord():
         """loops over input 3D results and applys clipper and saves the results in a textfile
         """
         # Read the input surfaces
-        SurfaceName = os.listdir(self.Args.InputSurfaces)
+        SurfaceName = os.listdir(self.Args.InputSurfaceFolder)
         SurfaceName = [filename for filename in SurfaceName if "vtp" in filename]
         
         
@@ -94,13 +93,14 @@ class PostProcessingDoplerCoord():
         filenames = os.listdir(self.Args.InputFolder)
 
         #Create the Output Directory
+        print("\n","="*10)
         if self.OutputDirName in filenames:
-            print(f"Output Directory: {self.OutputDirName} Alredy exists!")
-            print(f"Deleting the previous files within the Output Directory: {self.OutputDirName}")
+            print(f"--- Output Directory: {self.OutputDirName} Alredy exists!")
+            print(f"--- Deleting the previous files within the Output Directory: {self.OutputDirName}")
             os.system(f"rm -rf {self.Args.InputFolder}/{self.OutputDirName}/*")
         else:
             os.system(f"mkdir {self.Args.InputFolder}/{self.OutputDirName}")
-            print(f"Output Directory: {self.OutputDirName} Created!")
+            print(f"--- Output Directory: {self.OutputDirName} Created!")
 
         #Extract the vtu files within the InputFolder
         filenames = [filename for filename in filenames if "vtu" in filename]
@@ -114,7 +114,7 @@ class PostProcessingDoplerCoord():
                 
                 
                 # get surface coordinate to define a sphere clip
-                self.GetCoord(f"{self.Args.InputSurfaces}/{surface}")
+                self.GetCoord(f"{self.Args.InputSurfaceFolder}/{surface}")
                 print("--- Defining the sphere clipper")
                 
                 ofile = f"{self.Args.InputFolder}/{self.OutputDirName}/results_{location[0]}.txt"
@@ -132,13 +132,11 @@ class PostProcessingDoplerCoord():
                         WriteVTUFile(f"{self.Args.InputFolder}/{self.OutputDirName}/{location[0]}_{file}", self.clipper.GetOutput())
 
 
-        
-
 if __name__=="__main__":
     
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("-InputSurfaceFolder", "--InputSurfaceFolder", type=str, dest="-InputSurfaceFolder", required=True, help="Folder containing the surface files at the location of Doppler Velocity Prob defined as a single or several vtp files")
+    parser.add_argument("-InputSurfaceFolder", "--InputSurfaceFolder", type=str, dest="InputSurfaceFolder", required=True, help="Folder containing the surface files at the location of Doppler Velocity Prob defined as a single or several vtp files")
     parser.add_argument("-InputFolder", "--InputFolder", type=str, dest="InputFolder", required=True, help="Folder containing the 3D results of the CFD simulations")
 
     args = parser.parse_args()
