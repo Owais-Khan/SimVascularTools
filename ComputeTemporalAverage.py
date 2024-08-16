@@ -10,12 +10,14 @@ class ComputeTemporalAverage():
 	def __init__(self,Args):
 		self.Args=Args
 		if self.Args.OutputFolder is None:
-			self.Args.OutputFolder=self.Args.InputFolder+"/../TemporalAvg"
+			self.Args.OutputFolder=self.Args.InputFolder+"/TemporalAvg"
 			os.system("mkdir %s"%self.Args.OutputFolder)
 		
 	def Main(self):
 		#Read all of the file name
 		InputFiles1=sorted(glob(self.Args.InputFolder+"/*.vtu")) #volumetric files 
+		#InputFiles1=sorted(InputFiles1, key=lambda TS: int(TS.split("sample")[1].split(".vtu")[0]))
+	
 		InputFiles2=sorted(glob(self.Args.InputFolder+"/*.vtp")) #surface files
 		
 

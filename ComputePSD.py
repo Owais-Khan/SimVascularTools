@@ -15,7 +15,11 @@ class ComputePSD():
 
 	def Main(self):
 		#Read the velocity file
-		VelocityData=np.load(self.Args.InputFolder+"/VelocityData.npy")
+		InputFileName=glob(self.Args.InputFolder+"/VelocityData.npy")
+		InputFileName+=glob(self.Args.InputFolder+"/VelocityData.npz")		
+		print ("The Input FileName is: %s"%InputFilename
+
+		VelocityData=np.load(InputFileName)
 		
 		#Get all the array sizes
 		Nprobes=len(VelocityData.item().keys())

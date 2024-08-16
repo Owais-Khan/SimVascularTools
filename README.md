@@ -123,6 +123,14 @@ Step1: The following script will loop over all of the vtu files in a folder and 
 ```console
 foo@bar:~$ python ~/Path/To/SimVascularTools/ExtractProbePoints.py -InputFolder /path/to/folder/with/vtu/files -InputFile /path/to/file/with/probes
 ```
+```console
+foo@bar:~$ python ~/Path/to/SimVascularTOos/ComputePSD.py -InputFolder /path/to/folder/containing/VelocityData.npz/file -Period [X]
+```
+Optional Arguments:
+- ```-OutputFolder```: Name of the output folder to store the PSD files.
+
+
+
 
 ## SimVascular Useful Scripts
 ### Project Results to Another (Coarser) Mesh
