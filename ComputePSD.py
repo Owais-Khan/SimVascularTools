@@ -15,18 +15,19 @@ class ComputePSD():
 
 	def Main(self):
 		#Read the velocity file
-		InputFileName=glob(self.Args.InputFolder+"/VelocityData.npy")
-		InputFileName+=glob(self.Args.InputFolder+"/VelocityData.npz")		
-		print ("The Input FileName is: %s"%InputFilename
+		InputFileName=glob(self.Args.InputFolder+"/VelocityData*")[0]
+		print ("The Input FileName is: %s"%InputFileName)
 
 		VelocityData=np.load(InputFileName)
-		
+		try: VelocityData=VelocityData["arr_0"]
+		except: VelocityData=VelocityData		
+
+
 		#Get all the array sizes
 		Nprobes=len(VelocityData.item().keys())
-		Nts=len(VelocityData.item().get(0)[0,:])
+		Nts=len(VelocityData.item().get(0)[0,:])	
 		print ("--- The number of time steps: %d"%Nts)
 		print ("--- The number of probe points: %d"%Nprobes)
-
 
 		#Compute frequencies
 		fs=int(Nts/self.Args.Period)
@@ -45,7 +46,7 @@ class ComputePSD():
 
 			#Loop over all of the probe locations
 			for j in range(0,len(VelocityData.item().get(i)[:,0])):
-				f_, Pxx_den_ = signal.welch(VelocityData.item().get(0)[j,:], fs, nperseg=Nts/4.)
+				f_, Pxx_den_ = signal.welch(VelocityData.item().get(i)[j,:], fs, nperseg=Nts/4.)
 				PSD_+=Pxx_den_
 
 			#Now Average the frequency content
@@ -53,9 +54,17 @@ class ComputePSD():
 
 			print("------ Writing Sphere-averaged PSD to: %s/PSD_Probe%d.dat"%(self.Args.OutputFolder,i))
 			for j in range(0,len(f_)):
-				outfile.write("%.05f %.5e\n"%(f_[j],PSD_[j]))
+				outfile.write("%.05f %.10e\n"%(f_[j],PSD_[j]))
 			outfile.close()	
-		
+	
+			print ("--- Writing the time vs Velocity file at center for Probe: %d"%i)
+			outfile=open(self.Args.OutputFolder+"/Velocity_SphereCenter_Probe%d.dat"%i,'w')
+			outfile.write("Time Velocity\n")
+			for j in range(Nts):
+				outfile.write("%.05f %.10f\n"%(time[j],VelocityData.item().get(i)[0,j]))
+			outfile.close()
+			
+	
 
 if __name__=="__main__":
         #Description
