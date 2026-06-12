@@ -14,27 +14,32 @@ pConv = 1333.34
 # ** Patient clinical information (if not known, indicate 'NONE')
 
 heart_rate = 60 #BPM
-Pao_min    = 89.8 # mmHg
-Pao_max    = 151.3 # mmHg
-strokeVol = 80.85 # mL
-ejectFract = 0.69
-sys_cor_split= 6.37 #The fraction of cardiac output to all coronary arteries
+Pao_min    = 68.9 # mmHg
+Pao_max    = 108.9 # mmHg
+strokeVol = 81.33333 # mL
+ejectFract = 0.71
+sys_cor_split= 5.19 #The fraction of cardiac output to all coronary arteries
 
-meanPressure = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
+Pao_mean = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
 Ppul_mean = 14.0 # mmHg
 Qla_ratio = 'None' #1.07 # Ratio of 'early' to 'late' flows into LV (i.e. E/A wave)
 mit_valve = 'None' #0.763  #0.56 # Fraction of heart cycle that mitral valve is open for
 aor_valve = 'None' #0.311  #0.39 # Fraction of heart cycle that aortic valve is open for
 pul_valve = 'None' #0.377  #0.374 # Fraction of heart cycle that pulmonary valve is open for
 Pra_mean = 'None'  #3.0 # mmHg - IVC right atrial mean pressure
-meanFlow = strokeVol*(float(heart_rate)/60.0) # mL/s
+FlowRate = strokeVol*(float(heart_rate)/60.0) # mL/s
 Cam_scale = 0.89
 Ca_scale = 0.11
-Crcr_estim = 50e-6 #compliance of the aorta (estimate from 3ewk)
+Crcr_estim = 1e-3 #compliance of the aorta (estimate from 3ewk)
+
+# ************************ Compliance of the aorta *************************
+Crcr_assigned=Crcr_estim
+Crcr_computed=0
 
 # ************************* Left and Right Coronary Split *******************
 #Write  file to store flow Split data
 Left_Cor_split_assigned=70
+Aor_Cor_split_assigned=sys_cor_split
 Right_Cor_split_assigned=100-Left_Cor_split_assigned
 
 f_l=(sys_cor_split/100.)*(Left_Cor_split_assigned/100.)
@@ -48,6 +53,28 @@ Flow_split_file=open("LeftRightFlowSplit.dat",'w')
 Flow_split_file.write("Iteration AortaCoronaryAssigned AortaCoronaryMeasured LeftSplitAssigned LeftSplitMeasured LeftResistance RightResistance\n")
 Flow_split_file.close()
 
+
+# ************************ Inlet Flow rate ***********************************
+FlowRate_computed=0 #Don't touch
+FlowRate_assigned=FlowRate
+
+#Write the data to the Flow Rate file
+Flow_rate_file=open("InletFlowRate.dat",'w')
+Flow_rate_file.write("Iteration FlowRateAssigned FlowRateComputed\n")
+Flow_rate_file.close()
+
+# ************************ Pressure Files ************************************ 
+#Mean Pressure
+Pao_mean_computed=0
+Pao_mean=0.3333*Pao_max+0.6666*Pao_min
+
+#Write the data to the Pressure File
+Pressure_file=open("AorticPressures.dat",'w')
+Pressure_file.write("Iteration ComplianceAssigned PressureMeanAssigned PressureMeanComputed PressureMaxComputed PressureMinComputed\n")
+Pressure_file.close()
+
+
+
 # *********************** Coronary Flow Split ************************
 splitting_scheme="owais"
 if splitting_scheme=="justin":sys_cor_split = 4.0
@@ -55,7 +82,7 @@ if splitting_scheme=="owais": sys_cor_split = (f_l+f_r)*100
 
 # *************************** SOLVER PARAMETERS *************************
 N_timesteps=200
-N_cycles=3
+N_cycles=4
 
 # ** FSI parameters
 
@@ -72,7 +99,7 @@ deformable_lima_E = 7000000
 deformable_nuvw=0.5
 deformable_density=1.0
 deformable_kcons=0.833333
-deformable_pressure=119990
+deformable_pressure=Pao_mean
 
 # ** Mesh information
 WORKING_DIRECTORY  = os.getcwd()
@@ -170,7 +197,7 @@ def runScript_base(scriptName, jobName, time, nodes, procs):
   scriptFile.write('#!/bin/bash\n\n')
   scriptFile.write('# Name of your job\n')
   scriptFile.write('#SBATCH --job-name='+str(jobName)+'\n')
-  scriptFile.write('#SBATCH --partition=debug\n\n')
+  scriptFile.write('#SBATCH --partition=compute\n\n')
   scriptFile.write('# Specify the name of the output file. The %j specifies the job ID\n')
   scriptFile.write('#SBATCH --output='+str(jobName)+'.o%j\n\n')
   scriptFile.write('# Specify the name of the error file. The %j specifies the job ID\n')
@@ -203,7 +230,7 @@ def makeNM_script():
 #-------------------------------------------------------------------------------
 
 def makeFlowsolver_script():
-  runScript_base(SOLVER_SCRIPT, 'svFlowsolver', 1, FLOWSOLVER_NODES, PROCESSORS)
+  runScript_base(SOLVER_SCRIPT, 'svFlowsolver', 2, FLOWSOLVER_NODES, PROCESSORS)
   flow_script = open(SOLVER_SCRIPT, 'a')
   flow_script.write('\n')
   flow_script.write(RUN_COMMAND + ' /home/k/khanmu11/ana/Softwares/svSolver/BuildWithMake/Bin/svsolver-openmpi.exe\n')
@@ -442,7 +469,10 @@ def post_process_3D_results(all_data_path):
   #Define global variables
   global Left_Cor_split_computed
   global Aor_Cor_split_computed
-
+  global FlowRate_computed
+  global Pao_max_computed
+  global Pao_min_computed
+  global Pao_mean_computed 
   total_steps = -1
   single_cycle = -1
   step_size_3D = -1
@@ -591,6 +621,7 @@ def post_process_3D_results(all_data_path):
 
   # COMPUTE OUTPUT QUANTITIES
   Qinlet = np.trapz( AllData[total_steps - single_cycle - 1 : total_steps, nUnknowns + nFaces + 4], x=AllData[total_steps - single_cycle - 1 : total_steps, auxStart] )
+  FlowRate_computed=-1*Qinlet
   Aor_Cor_split = ( (Q_lcor + Q_rcor) / (Q_lcor + Q_rcor + Q_rcr) ) * 100.0
   Aor_Cor_split_computed=Aor_Cor_split
   #Aor_Cor_split = ( (Q_lcor) / (Q_lcor + Q_rcor + Q_rcr) ) * 100.0
@@ -598,7 +629,10 @@ def post_process_3D_results(all_data_path):
   Left_Cor_split_computed=Left_Cor_split
   Pao_max = np.amax( AllData[total_steps - single_cycle - 1 : total_steps, 9] )
   Pao_min = np.amin( AllData[total_steps - single_cycle - 1 : total_steps, 9] )
+  Pao_max_computed=Pao_max
+  Pao_min_computed=Pao_min
   Pao_mean = np.mean( AllData[total_steps - single_cycle - 1 : total_steps, 9] )
+  Pao_mean_computed=Pao_mean
   Ppul_mean = np.mean( AllData[total_steps - single_cycle - 1 : total_steps, 4] )
   EF_LV = ( np.amax( AllData[total_steps - single_cycle - 1 : total_steps, 7] ) - np.amin( AllData[total_steps - single_cycle - 1 : total_steps, 7] ) ) / np.amax( AllData[total_steps - single_cycle - 1 : total_steps, 7] )
   Prv_Pra = np.amax( AllData[total_steps - single_cycle - 1 : total_steps, auxStart + 7 + nFaces] ) - np.amax( AllData[total_steps - single_cycle - 1 : total_steps, auxStart + 9 + nFaces] )
@@ -620,7 +654,7 @@ def post_process_3D_results(all_data_path):
   print("** PaoMin: \t{0:.2f}".format(Pao_min))
   print("** PaoMax: \t{0:.2f}".format(Pao_max))
   print("** PaoMean: \t{0:.2f}".format(Pao_mean))
-  print("** Aor_Cor_Split: \t{0:.2f}".format(Aor_Cor_split))
+  print("** Aor_Cor_Split: \t{0:.2f}".format(sys_cor_split))
   print("** Left_Cor_Split: \t{0:.2f}".format(Left_Cor_split))
   print("** Qinlet: \t{0:.2f}".format(abs(Qinlet)))
   print("** EF_LV: \t\t{0:.2f}".format(EF_LV))
@@ -1115,12 +1149,12 @@ def rigidPresolve():
     r_LCA_murray.append(temp)
 
   if splitting_scheme=="justin":
-    R_tot = meanPressure * pConv / meanFlow
+    R_tot =  (Pao_mean* pConv) / FlowRate_assigned
     beta = sys_cor_split*0.01 / (1.0 - sys_cor_split*0.01)
     R_cor = R_tot * (1.0 + beta)/beta
     R_br = R_tot * (1.0 + beta)
   elif splitting_scheme=="owais":
-    R_tot  = (meanPressure * pConv)/meanFlow
+    R_tot  = ( Pao_mean* pConv)/FlowRate_assigned
     R_cor_l= R_tot/float(f_l) #flow split to the left coronary tree
     R_cor_r= R_tot/float(f_r) #flow split to the right coronary tree
     R_aorta= R_tot/(1.-f_l-f_r) #flow split to the aorta
@@ -1133,13 +1167,13 @@ def rigidPresolve():
     if splitting_scheme=="justin": temp =     R_br*RA_rcr/r_br_murray[i]
     if splitting_scheme=="owais":  temp =  R_aorta*RA_rcr/r_br_murray[i]
     Rrcr_base.append(temp / pConv)
-    Crcr_base.append((A_br[i] * Crcr_estim) / sum(A_br))
+    Crcr_base.append((A_br[i] * Crcr_assigned) / sum(A_br))
 
   Ram_l_base = []
   Rv_l_base = []
   Cam_l_base = []
   Ca_l_base = []
-  C_lca = 0.5e-6 #MOK original was 1e-5
+  C_lca = Crcr_assigned/33.33333 #3e-5 
 
   # Calculate and store the left coronary outlet resistances and capacitances
   for i in range(nCOR_l):
@@ -1147,15 +1181,17 @@ def rigidPresolve():
     if splitting_scheme=="owais": temp = RA_cor*R_cor_l/r_LCA_murray[i]
     Ram_l_base.append(0.89 * temp / pConv)
     Rv_l_base.append(0.11 * temp / pConv)
-    CA = C_lca / sum(A_LCA)
-    Cam_l_base.append(Cam_scale * A_LCA[i] * CA * pConv)
-    Ca_l_base.append(Ca_scale * A_LCA[i] * CA * pConv)
+    CA = C_lca #/ max(A_LCA)
+    #Cam_l_base.append(Cam_scale * A_LCA[i] * CA * pConv)
+    Cam_l_base.append(Cam_scale *  CA )
+    #Ca_l_base.append(Ca_scale * A_LCA[i] * CA * pConv)
+    Ca_l_base.append(Ca_scale *  CA)
 
   Ram_r_base = []
   Rv_r_base = []
   Cam_r_base = []
   Ca_r_base = []
-  C_rca = 0.25e-6 #MOK: original was 1e-5
+  C_rca = Crcr_assigned/33.33333 #MOK: original was 1e-5
    
   # Calculate and store the right coronary outlet resistances and capacitances
   for i in range(nCOR_r):
@@ -1163,9 +1199,11 @@ def rigidPresolve():
     if splitting_scheme=="owais":  temp = RA_cor*R_cor_r/r_RCA_murray[i]
     Ram_r_base.append(0.89 * temp / pConv)
     Rv_r_base.append(0.11 * temp / pConv)
-    CA = C_rca / sum(A_RCA)
-    Cam_r_base.append(Cam_scale * A_RCA[i] * CA * pConv)
-    Ca_r_base.append(Ca_scale * A_RCA[i] * CA * pConv)
+    CA = C_rca #/ max(A_RCA)
+    #Cam_r_base.append(Cam_scale * A_RCA[i] * CA * pConv)
+    Cam_r_base.append(Cam_scale * CA)
+    #Ca_r_base.append(Ca_scale * A_RCA[i] * CA * pConv)
+    Ca_r_base.append(Ca_scale * CA)
 
   # Need to scale the rcr surrogate resistances so surrogate simulation
   # will converge. Find smallest combinatin of Crcr * R_surrogate
@@ -1415,10 +1453,10 @@ def rigidPresolve():
   targetsFile.write('PaoMin_conv,Minimum Aortic Pressure Convergence,0\n')
   targetsFile.write('PaoMax, Maximum Aortic Pressure,'+str(Pao_max)+'\n')
   targetsFile.write('PaoMax_conv,Maximum Aortic Pressure Convergence,0\n')
-  targetsFile.write('PaoMean,Mean Aortic Pressure,'+str(meanPressure)+'\n')
+  targetsFile.write('PaoMean,Mean Aortic Pressure,'+str(Pao_mean)+'\n')
   targetsFile.write('PaoMean_conv,Mean Aortic Pressure Convergence,0\n')
   targetsFile.write('AorCorSplit,Coronary Flow Split,'+str(sys_cor_split)+'\n')
-  targetsFile.write('AbsQin,Inlet flow rate,'+str(meanFlow)+'\n')
+  targetsFile.write('AbsQin,Inlet flow rate,'+str(FlowRate)+'\n')
   targetsFile.write('AbsQin_conv,Inlet flow rate convergence,0\n')
   targetsFile.write('Qsystole_perc,Percentage of cardiac output in systole,0.9\n')
    
@@ -1857,7 +1895,7 @@ def deformablePresolve():
   # Update the coronaryModel.txt to include an inlet capacitor for FSI tuning
   modelFile = open('coronaryModel.txt','a')
   modelFile.write('Lin,4.0\n') 
-  modelFile.write('Csurr,0.0006\n')
+  modelFile.write('Csurr,%.08f\n'%(0.0001))
   modelFile.close()
 
   # Update coronaryParams.txt to lower the inlet capacitance Cpa
@@ -1894,7 +1932,7 @@ def deformablePresolve():
 #-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-  for Counter in range(8): #Loop to make sure left-right coronary split is maintained
+  for Counter in range(5): #Loop to make sure left-right coronary split is maintained
     print ("-"*200)
     print('This script is for automatically tuning the boundary conditions for closed loop coronary simulations')
     print('\n First, we use the SimVascular pre-solver to process the mesh')
@@ -1955,36 +1993,72 @@ if __name__ == "__main__":
 
     #Save the Flow Splits to the file
     with open("LeftRightFlowSplit.dat",'a') as Flow_split_file:
-      Flow_split_file.write("%d %.04f %.04f %.04f %.04f %.04f %.04f\n"%(Counter, sys_cor_split, Aor_Cor_split_computed, Left_Cor_split_assigned, Left_Cor_split_computed, f_l, f_r))  
+      Flow_split_file.write("%d %.04f %.04f %.04f %.04f %.04f %.04f\n"%(Counter, Aor_Cor_split_assigned, Aor_Cor_split_computed, Left_Cor_split_assigned, Left_Cor_split_computed, f_l, f_r))  
+
+    with open("InletFlowRate.dat",'a') as Flow_rate_file:
+      Flow_rate_file.write("%d %.04f %.04f\n"%(Counter,FlowRate_assigned,FlowRate_computed))
+  
+    with open("AorticPressures.dat",'a') as Pressure_file:
+      Pressure_file.write("%d %.08f %.04f %.04f %.04f %.04f\n"%(Counter,Crcr_assigned,Pao_mean,Pao_mean_computed,Pao_max_computed,Pao_min_computed)) 
+   
+
 
    #Check to ensure left and right coronary split is maintained
-    Diff=(Left_Cor_split_computed-Left_Cor_split_assigned)
-    print ("The Left Coronary Split is: %.02f "%Left_Cor_split_computed)
-    if Diff<2 and Diff>-2:
+    Diff_leftsplit=(Left_Cor_split_computed-Left_Cor_split_assigned)
+    Diff_aortasplit=(Aor_Cor_split_computed-sys_cor_split)
+    Diff_flowrate=(FlowRate_computed-FlowRate)
+    Diff_pao_mean=(Pao_mean_computed-Pao_mean)
+
+    print ("-"*20)
+    print ("The computed Left Coronary Split is:  %.02f "%Left_Cor_split_computed)
+    print ("The assigned Left Coronary Split is:  %.02f "%Left_Cor_split_assigned)
+    print ("-"*20)
+    print ("The computed Aorta-Coronary Split is: %.02f "%Aor_Cor_split_computed)
+    print ("The assigned Aorta-Coronary Split is: %.02f "%Aor_Cor_split_assigned)
+    print ("-"*20)
+    print ("The computed Inlet Flow Rate is:      %.02f "%FlowRate_computed)
+    print ("The assigned Inlet Flow Rate is:      %.02f "%FlowRate_assigned)
+    print ("-"*20)
+    print ("The computed Mean Pressure is:        %.02f "%Pao_mean_computed)
+    print ("The assigned Mean Pressure is:        %.02f "%Pao_mean)
+    print ("-"*20)
+    print ("The computed Max Pressure is:         %.02f "%Pao_max_computed)
+    print ("The computed Min Pressure is:        %.02f "%Pao_min_computed)
+    
+    if abs(Diff_leftsplit)<1 and abs(Diff_aortasplit)<0.15 and abs(Diff_flowrate)<1 and abs(Diff_pao_mean)<2:
       break
-    elif Diff>2:
+
+ 
+    #Flow rate split
+    if abs(Diff_aortasplit)>0.15:
+      Aor_Cor_split_assigned=Aor_Cor_split_assigned*(sys_cor_split/Aor_Cor_split_computed)
+      f_l=(Aor_Cor_split_assigned/100.)*(Left_Cor_split_assigned/100.)
+      f_r=(Aor_Cor_split_assigned/100.)*(Right_Cor_split_assigned/100.) 
+    #else:
+    if abs(Diff_leftsplit)>1:
+      Right_Cor_split_computed=100-Left_Cor_split_computed
       f_l=f_l*(Left_Cor_split_assigned/Left_Cor_split_computed)
-      f_r=(sys_cor_split/100.)-f_l
-      print ("The Updated Left Split is: %.03f"%f_l)
-      print ("The Updated Right Split is: %.03f"%f_r)
-      os.system("mkdir Coronary_Flow_Split_Iteration%d"%Counter)
-      os.system("mv FSI_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
-      os.system("mv rigid_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
-      os.system("mv coronaryLPN.svpre Coronary_Flow_Split_Iteration%d/"%Counter)
+      f_r=f_r*(Right_Cor_split_assigned/Right_Cor_split_computed)
+ 
+    #Flow Rate
+    if abs(Diff_flowrate)>1:
+      FlowRate_assigned=FlowRate_assigned*(FlowRate/FlowRate_computed)
 
-    elif Diff<-2:
-      f_l=f_l*(Left_Cor_split_computed/Left_Cor_split_assigned)
-      f_r=(sys_cor_split/100.)-f_l
-      print ("The Updated Left Split is: %.03f"%f_l)
-      print ("The Updated Right Split is: %.03f"%f_r)
-      os.system("mkdir Coronary_Flow_Split_Iteration%d"%Counter)
-      os.system("mv FSI_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
-      os.system("mv rigid_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
-      os.system("mv coronaryLPN.svpre Coronary_Flow_Split_Iteration%d/"%Counter)
+    if abs(Diff_pao_mean)>2:
+      Crcr_assigned=Crcr_assigned*(0.3333*(Pao_max_computed/Pao_max)+0.6666*(Pao_min_computed/Pao_min))
 
-    else:
-      print ("There is an error. Check the Flow Split Conditions")
+    print ("\n")
+    print ("The Updated Left Split is:    %.03f"%f_l)
+    print ("The Updated Right Split is:   %.03f"%f_r)
+    print ("The Updated Aortic Split is:  %.03f"%Aor_Cor_split_assigned)
+    print ("The Updated Flow Rate is:     %.03f"%FlowRate_assigned)
+    print ("The Updated Compliance is:    %.06f"%Crcr_assigned)
+    print ("\n")
 
+    os.system("mkdir Coronary_Flow_Split_Iteration%d"%Counter)
+    os.system("mv FSI_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
+    os.system("mv rigid_coronary_tuning_and_simulation Coronary_Flow_Split_Iteration%d/"%Counter)
+    os.system("mv coronaryLPN.svpre Coronary_Flow_Split_Iteration%d/"%Counter)
 
     
 #-------------------------------------------------------------------------------
