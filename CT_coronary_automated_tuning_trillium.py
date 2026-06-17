@@ -13,12 +13,12 @@ pConv = 1333.34
 # ******************* DEFINE USER INPUTS IN THIS BLOCK ************************
 # ** Patient clinical information (if not known, indicate 'NONE')
 
-heart_rate = 60 #BPM
-Pao_min    = 76.5 # mmHg
-Pao_max    = 135.2 # mmHg
-strokeVol = 74.733333 # mL
-ejectFract = 0.74
-sys_cor_split= 5.18 #The fraction of cardiac output to all coronary arteries
+heart_rate = 60   #BPM
+Pao_min    = 80   # mmHg
+Pao_max    = 120  # mmHg
+strokeVol =  83   # mL
+ejectFract = 0.75 #ejection fraction
+sys_cor_split= 4  #The fraction of cardiac output to all coronary arteries
 
 Pao_mean = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
 Ppul_mean = 14.0 # mmHg
