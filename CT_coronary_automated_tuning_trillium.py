@@ -19,6 +19,7 @@ Pao_max    = 120  # mmHg
 strokeVol =  83   # mL
 ejectFract = 0.75 #ejection fraction
 sys_cor_split= 4  #The fraction of cardiac output to all coronary arteries
+USER_EMAIL_ADDRESS = 'owaiskhan@torontomu.ca'
 
 Pao_mean = (0.333)*Pao_max + (0.667)*Pao_min # mmHg
 Ppul_mean = 14.0 # mmHg
@@ -133,8 +134,6 @@ RES_OPT_SCRIPT = "Trillium_optimize_surr_res_script"
 COM_OPT_SCRIPT = "Trillium_optimize_surr_com_script"
 
 # ** Other tuning settings
-
-USER_EMAIL_ADDRESS = 'owaiskhan@torontomu.ca'
 USE_OPTIMIZATION = True
 LOG_SCALE = 0.0001
 NUM_RESTARTS = 50
